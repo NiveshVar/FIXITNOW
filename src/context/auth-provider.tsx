@@ -5,6 +5,7 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { UserProfile } from "@/lib/types";
+import { findOrCreateUser } from "@/app/actions";
 
 interface AuthContextType {
   user: User | null;
@@ -28,6 +29,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       if (user) {
         setUser(user);
+        if (user.phoneNumber && !user.email) {
+          await findOrCreateUser(user.uid, user.phoneNumber);
+        }
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
@@ -49,3 +53,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+declare global {
+  interface Window {
+    recaptchaVerifier: any;
+  }
+}

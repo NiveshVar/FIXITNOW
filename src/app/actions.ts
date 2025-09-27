@@ -9,9 +9,12 @@ import {
   addDoc,
   collection,
   doc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadString } from "firebase/storage";
 import { z } from "zod";
@@ -148,4 +151,25 @@ export async function updateComplaintStatus(complaintId: string, status: Complai
     } catch (error: any) {
         return { error: error.message };
     }
+}
+
+
+export async function findOrCreateUser(
+  uid: string,
+  phone: string
+): Promise<void> {
+  const userRef = doc(db, "users", uid);
+
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("uid", "==", uid));
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
+    await setDoc(userRef, {
+      uid: uid,
+      name: "User",
+      email: phone,
+      role: "user",
+    });
+  }
 }
