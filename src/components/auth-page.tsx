@@ -21,6 +21,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -56,7 +57,9 @@ const signupSchema = z.object({
 });
 
 const phoneSchema = z.object({
-  phone: z.string().min(10, { message: "Invalid phone number." }),
+  phone: z.string().refine( (phone) => /^\+[1-9]\d{1,14}$/.test(phone), {
+    message: "Invalid phone number. Please use E.164 format (e.g., +14155552671).",
+  }),
 });
 
 const otpSchema = z.object({
@@ -81,7 +84,7 @@ export default function AuthPage() {
 
   const phoneForm = useForm<z.infer<typeof phoneSchema>>({
     resolver: zodResolver(phoneSchema),
-    defaultValues: { phone: "" },
+    defaultValues: { phone: "+" },
   });
 
   const otpForm = useForm<z.infer<typeof otpSchema>>({
@@ -137,14 +140,14 @@ export default function AuthPage() {
       const appVerifier = window.recaptchaVerifier;
       const result = await signInWithPhoneNumber(
         auth,
-        `+${values.phone}`,
+        values.phone,
         appVerifier
       );
       setConfirmationResult(result);
       setIsOtpSent(true);
       toast({
         title: "OTP Sent",
-        description: `An OTP has been sent to +${values.phone}.`,
+        description: `An OTP has been sent to ${values.phone}.`,
       });
     } catch (error: any) {
       toast({
@@ -341,10 +344,13 @@ export default function AuthPage() {
                                 <FormLabel>Phone Number</FormLabel>
                                 <FormControl>
                                   <Input
-                                    placeholder="18005551234"
+                                    placeholder="+18005551234"
                                     {...field}
                                   />
                                 </FormControl>
+                                 <FormDescription>
+                                  Must be in E.164 format (e.g., +14155552671)
+                                </FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
