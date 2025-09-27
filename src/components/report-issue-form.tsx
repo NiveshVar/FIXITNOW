@@ -14,7 +14,6 @@ import {
   Trees,
   Wrench,
   Send,
-  Sparkles,
   HelpCircle,
   LocateFixed,
 } from "lucide-react";
@@ -30,8 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { createComplaint } from "@/app/actions";
 import { fileToDataUri } from "@/lib/utils";
-import { ChatbotIssueReportingOutput } from "@/ai/flows/chatbot-issue-reporting";
-import type { ComplaintCategory } from "@/lib/types";
+import type { ComplaintCategory, ReportPrefill } from "@/lib/types";
 
 const reportSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters." }),
@@ -54,7 +52,7 @@ const categoryIcons: Record<ComplaintCategory, React.ElementType> = {
 };
 
 interface ReportIssueFormProps {
-  prefillData: ChatbotIssueReportingOutput | null;
+  prefillData: ReportPrefill | null;
   onClearPrefill: () => void;
 }
 
@@ -78,7 +76,7 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
 
   useEffect(() => {
     if (prefillData) {
-      form.setValue("title", prefillData.category);
+      form.setValue("title", prefillData.title);
       form.setValue("description", prefillData.description);
       form.setValue("address", prefillData.locationDescription);
       if (["pothole", "tree fall", "garbage", "stray dog"].includes(prefillData.category)) {
@@ -323,5 +321,3 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
     </Card>
   );
 }
-
-    

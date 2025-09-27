@@ -7,14 +7,14 @@ import MyIssues from "@/components/my-issues";
 import { useAuth } from "@/hooks/use-auth";
 import AllIssuesAdmin from "@/components/all-issues-admin";
 import Chatbot from "@/components/chatbot";
-import { chatbotIssueReporting, ChatbotIssueReportingOutput } from "@/ai/flows/chatbot-issue-reporting";
+import type { ReportPrefill } from "@/lib/types";
 
 export default function Dashboard() {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState("report");
-  const [chatbotData, setChatbotData] = useState<ChatbotIssueReportingOutput | null>(null);
+  const [chatbotData, setChatbotData] = useState<ReportPrefill | null>(null);
 
-  const handleChatbotSubmit = (data: ChatbotIssueReportingOutput) => {
+  const handleChatbotSubmit = (data: ReportPrefill) => {
     setChatbotData(data);
     setActiveTab("report");
   };

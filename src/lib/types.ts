@@ -30,3 +30,10 @@ export type Complaint = {
   timestamp: Timestamp;
   duplicateOf?: string;
 };
+
+export type ReportPrefill = {
+  title: string;
+  description: string;
+  locationDescription: string;
+  category: ComplaintCategory;
+};

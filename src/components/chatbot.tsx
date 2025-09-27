@@ -14,11 +14,13 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { MessageSquare, Loader2, Send, Sparkles } from "lucide-react";
-import { chatbotIssueReporting, ChatbotIssueReportingOutput } from "@/ai/flows/chatbot-issue-reporting";
+import { chatbotIssueReporting } from "@/ai/flows/chatbot-issue-reporting";
 import { useToast } from "@/hooks/use-toast";
+import type { ReportPrefill } from "@/lib/types";
+
 
 interface ChatbotProps {
-    onSubmit: (data: ChatbotIssueReportingOutput) => void;
+    onSubmit: (data: ReportPrefill) => void;
 }
 
 export default function Chatbot({ onSubmit }: ChatbotProps) {
@@ -34,7 +36,14 @@ export default function Chatbot({ onSubmit }: ChatbotProps) {
     setIsLoading(true);
     try {
       const result = await chatbotIssueReporting({ userInput: input });
-      onSubmit(result);
+      // Construct the full prefill object
+      const prefillData: ReportPrefill = {
+        title: "Issue reported by chatbot",
+        description: result.description,
+        locationDescription: "", // User will fill this
+        category: "other", // User will fill this
+      };
+      onSubmit(prefillData);
       setIsOpen(false);
     } catch (error) {
       toast({
