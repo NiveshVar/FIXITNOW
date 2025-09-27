@@ -15,11 +15,12 @@ import {
 } from "firebase/firestore";
 import axios from "axios";
 import { z } from "zod";
-import { db } from "@/lib/firebase";
+import { db, auth } from "@/lib/firebase";
 import { classifyIssue } from "@/ai/flows/image-classification-for-issue";
 import { detectDuplicateIssue } from "@/ai/flows/duplicate-issue-detection";
 import { revalidatePath } from "next/cache";
-import { ComplaintStatus } from "@/lib/types";
+import { ComplaintStatus, UserProfile } from "@/lib/types";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 
 const reportSchema = z.object({
@@ -125,11 +126,40 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     }
 
     revalidatePath("/");
+    revalidatePath("/admin/dashboard");
     return { success: true, id: complaintRef.id };
   } catch (error: any) {
     const errorMessage = error.response?.data?.error?.message || error.message;
     console.error("Failed to create complaint:", errorMessage)
     return { error: `Failed to create complaint: ${errorMessage}` };
+  }
+}
+
+const adminLoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string(),
+});
+
+export async function adminLogin(values: z.infer<typeof adminLoginSchema>) {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+    const user = userCredential.user;
+
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (userDoc.exists()) {
+      const userProfile = userDoc.data() as UserProfile;
+      if (userProfile.role === 'admin') {
+        return { success: true };
+      } else {
+        return { success: false, error: "You are not authorized to access this page." };
+      }
+    } else {
+      return { success: false, error: "User profile not found." };
+    }
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
 
@@ -139,6 +169,7 @@ export async function updateComplaintStatus(complaintId: string, status: Complai
         const complaintRef = doc(db, "complaints", complaintId);
         await updateDoc(complaintRef, { status });
         revalidatePath("/");
+        revalidatePath("/admin/dashboard");
         return { success: true };
     } catch (error: any) {
         return { error: error.message };
