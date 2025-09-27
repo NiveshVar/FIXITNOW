@@ -38,7 +38,7 @@ export default function AdminDashboardPage() {
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center p-4">
             <ShieldAlert className="h-16 w-16 text-destructive mb-4" />
             <h1 className="text-3xl font-bold">Access Denied</h1>
-            <p className="text-muted-foreground mt-2">You do not have permission to view this page.</p>
+            <p className="text-muted-foreground mt-2">You do not have permission to view this page. Please ensure you are logged in with an admin account.</p>
             <div className="mt-6 flex gap-4">
               <Button asChild>
                 <Link href="/">Go to Homepage</Link>
