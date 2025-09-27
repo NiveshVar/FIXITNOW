@@ -33,7 +33,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setProfile(profile);
   }, []);
 
-  const fetchUserProfile = useCallback(async (userToFetch: User) => {
+  const fetchUserProfile = useCallback(async (userToFetch: User | null) => {
+    if (!userToFetch) {
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+    
+    try {
       const userDocRef = doc(db, "users", userToFetch.uid);
       const userDoc = await getDoc(userDocRef);
       if (userDoc.exists()) {
@@ -41,25 +48,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setProfile(null);
       }
+    } catch (error) {
+      console.error("Failed to fetch user profile:", error);
+      setProfile(null);
+    } finally {
+       setLoading(false);
+    }
   }, []);
 
   const refreshAuth = useCallback(async () => {
     setLoading(true);
     const currentUser = auth.currentUser;
     setUser(currentUser);
-    if (currentUser) {
-      await fetchUserProfile(currentUser);
-    } else {
-      setProfile(null);
-    }
-    setLoading(false);
+    await fetchUserProfile(currentUser);
   }, [fetchUserProfile]);
 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (userState) => {
+      setLoading(true);
+      setUser(userState);
       if (userState) {
-        setUser(userState);
         const userDocRef = doc(db, "users", userState.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
@@ -68,10 +77,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setProfile(null); // Profile not found
         }
       } else {
-        setUser(null);
         setProfile(null);
       }
-      // Only set loading to false after all auth-related state is settled.
       setLoading(false);
     });
 
