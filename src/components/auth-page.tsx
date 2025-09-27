@@ -3,7 +3,12 @@ import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,11 +29,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { handleLogin, handleSignUp } from "@/app/actions";
 import { Logo } from "./icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
-import { useRouter } from "next/navigation";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -47,7 +50,6 @@ const signupSchema = z.object({
 
 export default function AuthPage() {
   const { toast } = useToast();
-  const router = useRouter();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -59,39 +61,47 @@ export default function AuthPage() {
     defaultValues: { name: "", email: "", password: "" },
   });
 
-
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
-    const result = await handleLogin(values);
-    if (result.error) {
+    try {
+      await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: result.error,
-      });
-    } else if (result.success) {
-       toast({
         title: "Login Successful",
         description: "Welcome back!",
       });
-      router.refresh();
+      // The onAuthStateChanged listener in AuthProvider will handle the redirect
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message,
+      });
     }
   };
 
   const onSignupSubmit = async (values: z.infer<typeof signupSchema>) => {
-    const result = await handleSignUp(values);
-    if (result.error) {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        values.email,
+        values.password
+      );
+      const user = userCredential.user;
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        name: values.name,
+        email: user.email,
+        role: "user",
+      });
+      toast({
+        title: "Sign Up Successful",
+        description: "You can now log in.",
+      });
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Sign Up Failed",
-        description: result.error,
+        description: error.message,
       });
-    } else if (result.success) {
-      toast({
-        title: "Sign Up Successful",
-        description: "You can now log in with your credentials.",
-      });
-      signupForm.reset();
-      router.refresh();
     }
   };
 
@@ -110,7 +120,7 @@ export default function AuthPage() {
           </div>
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Email</TabsTrigger>
+              <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
@@ -173,7 +183,7 @@ export default function AuthPage() {
                   <CardTitle className="text-2xl">Create an Account</CardTitle>
                   <CardDescription>
                     Enter your information to create an account.
-                  </CardDescription>
+                  </Description>
                 </CardHeader>
                 <CardContent>
                   <Form {...signupForm}>

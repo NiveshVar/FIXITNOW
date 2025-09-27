@@ -1,10 +1,6 @@
 "use server";
 
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-} from "firebase/auth";
+import { signOut } from "firebase/auth";
 import {
   addDoc,
   collection,
@@ -24,48 +20,6 @@ import { classifyIssue } from "@/ai/flows/image-classification-for-issue";
 import { detectDuplicateIssue } from "@/ai/flows/duplicate-issue-detection";
 import { revalidatePath } from "next/cache";
 import { ComplaintStatus } from "@/lib/types";
-
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
-});
-
-const signupSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-  password: z.string().min(6),
-});
-
-export async function handleLogin(values: z.infer<typeof loginSchema>) {
-  try {
-    await signInWithEmailAndPassword(auth, values.email, values.password);
-    revalidatePath("/");
-    return { success: true };
-  } catch (error: any) {
-    return { error: error.message };
-  }
-}
-
-export async function handleSignUp(values: z.infer<typeof signupSchema>) {
-  try {
-    const userCredential = await createUserWithEmailAndPassword(
-      auth,
-      values.email,
-      values.password
-    );
-    const user = userCredential.user;
-    await setDoc(doc(db, "users", user.uid), {
-      uid: user.uid,
-      name: values.name,
-      email: user.email,
-      role: "user", // Default role
-    });
-    revalidatePath("/");
-    return { success: true };
-  } catch (error: any) {
-    return { error: error.message };
-  }
-}
 
 
 export async function handleLogout() {

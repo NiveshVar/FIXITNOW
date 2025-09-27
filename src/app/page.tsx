@@ -30,16 +30,14 @@ export default function Home() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      {user && profile ? (
-        <>
-          <Header />
-          <Dashboard />
-        </>
-      ) : (
-        <AuthPage />
-      )}
-    </div>
-  );
+  if (user && profile) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <Dashboard />
+      </div>
+    );
+  }
+
+  return <AuthPage />;
 }
