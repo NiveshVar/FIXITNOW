@@ -58,7 +58,7 @@ export default function AdminLoginPage() {
       });
       // Set auth state and redirect
       authContext.setAuth(auth.currentUser, result.profile);
-      router.push("/admin/dashboard");
+      window.location.href = "/admin/dashboard";
     } else {
       toast({
         variant: "destructive",

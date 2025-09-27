@@ -75,7 +75,7 @@ export default function AuthPage() {
             description: "Welcome back!",
         });
         authContext.setAuth(auth.currentUser, result.profile);
-        router.push("/");
+        window.location.href = "/";
     } else {
       toast({
         variant: "destructive",
