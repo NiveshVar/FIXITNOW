@@ -183,7 +183,7 @@ export default function AuthPage() {
                   <CardTitle className="text-2xl">Create an Account</CardTitle>
                   <CardDescription>
                     Enter your information to create an account.
-                  </Description>
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Form {...signupForm}>
