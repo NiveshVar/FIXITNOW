@@ -6,10 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
   createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -36,10 +32,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Logo } from "./icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
-import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "./ui/input-otp";
+import { loginWithEmailOrPhone } from "@/app/actions";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
+  emailOrPhone: z.string().min(1, { message: "This field is required." }),
   password: z
     .string()
     .min(6, { message: "Password must be at least 6 characters." }),
@@ -54,33 +50,12 @@ const signupSchema = z.object({
     .min(6, { message: "Password must be at least 6 characters." }),
 });
 
-const phoneLoginSchema = z.object({
-  phone: z.string().min(10, { message: "Please enter a valid 10-digit phone number, including country code." }),
-});
-
-const otpSchema = z.object({
-  otp: z.string().length(6, { message: "OTP must be 6 digits." }),
-});
-
 export default function AuthPage() {
   const { toast } = useToast();
-  const [step, setStep] = React.useState<"phone" | "otp">("phone");
-  const [confirmationResult, setConfirmationResult] = React.useState<ConfirmationResult | null>(null);
-
-  const setupRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-        size: "invisible",
-        callback: (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-        },
-      });
-    }
-  };
-
+  
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { emailOrPhone: "", password: "" },
   });
 
   const signupForm = useForm<z.infer<typeof signupSchema>>({
@@ -88,28 +63,18 @@ export default function AuthPage() {
     defaultValues: { name: "", email: "", phone: "", password: "" },
   });
 
-  const phoneLoginForm = useForm<z.infer<typeof phoneLoginSchema>>({
-    resolver: zodResolver(phoneLoginSchema),
-    defaultValues: { phone: "" },
-  });
-
-  const otpForm = useForm<z.infer<typeof otpSchema>>({
-    resolver: zodResolver(otpSchema),
-    defaultValues: { otp: "" },
-  });
-
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
-    try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
-      toast({
-        title: "Login Successful",
-        description: "Welcome back!",
-      });
-    } catch (error: any) {
+    const result = await loginWithEmailOrPhone(values);
+    if (result.success) {
+        toast({
+            title: "Login Successful",
+            description: "Welcome back!",
+        });
+    } else {
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description: error.message,
+        description: result.error,
       });
     }
   };
@@ -133,7 +98,6 @@ export default function AuthPage() {
         title: "Sign Up Successful",
         description: "You can now log in.",
       });
-      // You might want to switch tabs or clear form here
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -143,48 +107,8 @@ export default function AuthPage() {
     }
   };
 
-  const onPhoneLoginSubmit = async (values: z.infer<typeof phoneLoginSchema>) => {
-    try {
-      setupRecaptcha();
-      const appVerifier = window.recaptchaVerifier;
-      const result = await signInWithPhoneNumber(auth, values.phone, appVerifier);
-      setConfirmationResult(result);
-      setStep("otp");
-      toast({
-        title: "OTP Sent",
-        description: "Please check your phone for the verification code.",
-      });
-    } catch (error: any) {
-      console.error("Phone sign in error", error);
-      toast({
-        variant: "destructive",
-        title: "Failed to Send OTP",
-        description: "Please check the phone number and try again.",
-      });
-    }
-  };
-
-  const onOtpSubmit = async (values: z.infer<typeof otpSchema>) => {
-    if (!confirmationResult) return;
-    try {
-      await confirmationResult.confirm(values.otp);
-      toast({
-        title: "Login Successful",
-        description: "Welcome!",
-      });
-      // AuthProvider will handle user state change
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Invalid OTP",
-        description: "The OTP you entered is incorrect. Please try again.",
-      });
-    }
-  };
-
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:min-h-screen">
-      <div id="recaptcha-container"></div>
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
@@ -196,18 +120,17 @@ export default function AuthPage() {
               Report and track community issues with ease.
             </p>
           </div>
-          <Tabs defaultValue="email" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="email">Email</TabsTrigger>
-              <TabsTrigger value="phone">Phone</TabsTrigger>
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
-            <TabsContent value="email">
+            <TabsContent value="login">
               <Card className="border-0 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-2xl">Welcome Back</CardTitle>
                   <CardDescription>
-                    Enter your email below to login to your account.
+                    Enter your credentials below to login to your account.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -218,10 +141,10 @@ export default function AuthPage() {
                     >
                       <FormField
                         control={loginForm.control}
-                        name="email"
+                        name="emailOrPhone"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Email</FormLabel>
+                            <FormLabel>Email or Phone Number</FormLabel>
                             <FormControl>
                               <Input {...field} />
                             </FormControl>
@@ -253,76 +176,6 @@ export default function AuthPage() {
                       </Button>
                     </form>
                   </Form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="phone">
-               <Card className="border-0 shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-2xl">Sign In with Phone</CardTitle>
-                  <CardDescription>
-                    {step === 'phone' ? "Enter your phone number to receive an OTP." : "Enter the 6-digit OTP sent to your phone."}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {step === 'phone' ? (
-                     <Form {...phoneLoginForm}>
-                        <form onSubmit={phoneLoginForm.handleSubmit(onPhoneLoginSubmit)} className="space-y-4">
-                           <FormField
-                              control={phoneLoginForm.control}
-                              name="phone"
-                              render={({ field }) => (
-                                 <FormItem>
-                                    <FormLabel>Phone Number</FormLabel>
-                                    <FormControl>
-                                       <Input placeholder="+1 1234567890" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                 </FormItem>
-                              )}
-                           />
-                           <Button type="submit" className="w-full" disabled={phoneLoginForm.formState.isSubmitting}>
-                              {phoneLoginForm.formState.isSubmitting ? "Sending OTP..." : "Send OTP"}
-                           </Button>
-                        </form>
-                     </Form>
-                  ) : (
-                     <Form {...otpForm}>
-                        <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-6">
-                           <FormField
-                              control={otpForm.control}
-                              name="otp"
-                              render={({ field }) => (
-                                 <FormItem>
-                                    <FormLabel>One-Time Password</FormLabel>
-                                    <FormControl>
-                                      <InputOTP maxLength={6} {...field}>
-                                        <InputOTPGroup>
-                                          <InputOTPSlot index={0} />
-                                          <InputOTPSlot index={1} />
-                                          <InputOTPSlot index={2} />
-                                        </InputOTPGroup>
-                                        <InputOTPSeparator />
-                                        <InputOTPGroup>
-                                          <InputOTPSlot index={3} />
-                                          <InputOTPSlot index={4} />
-                                          <InputOTPSlot index={5} />
-                                        </InputOTPGroup>
-                                      </InputOTP>
-                                    </FormControl>
-                                    <FormMessage />
-                                 </FormItem>
-                              )}
-                           />
-                           <Button type="submit" className="w-full" disabled={otpForm.formState.isSubmitting}>
-                                {otpForm.formState.isSubmitting ? "Verifying..." : "Verify OTP & Login"}
-                           </Button>
-                           <Button variant="link" size="sm" className="w-full" onClick={() => {setStep('phone'); otpForm.reset();}}>
-                              Back to phone number entry
-                           </Button>
-                        </form>
-                     </Form>
-                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -373,7 +226,7 @@ export default function AuthPage() {
                           <FormItem>
                             <FormLabel>Phone Number</FormLabel>
                             <FormControl>
-                              <Input placeholder="+1 1234567890" {...field} />
+                              <Input {...field} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>

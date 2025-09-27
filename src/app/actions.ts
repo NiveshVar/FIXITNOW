@@ -137,8 +137,48 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
   }
 }
 
+const loginWithEmailOrPhoneSchema = z.object({
+  emailOrPhone: z.string(),
+  password: z.string(),
+});
+
+async function findEmailByPhone(phone: string): Promise<string | null> {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("phone", "==", phone));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return null;
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    return userDoc.data().email as string;
+}
+
+export async function loginWithEmailOrPhone(values: z.infer<typeof loginWithEmailOrPhoneSchema>) {
+    try {
+        let email = values.emailOrPhone;
+        const isEmail = z.string().email().safeParse(email).success;
+
+        if (!isEmail) {
+            const foundEmail = await findEmailByPhone(email);
+            if (!foundEmail) {
+                return { success: false, error: "No account found with this phone number." };
+            }
+            email = foundEmail;
+        }
+
+        await signInWithEmailAndPassword(auth, email, values.password);
+        return { success: true };
+    } catch (error: any) {
+        // Handle generic errors like wrong password
+        return { success: false, error: "Invalid credentials." };
+    }
+}
+
+
 const adminLoginSchema = z.object({
-  email: z.string().email(),
+  emailOrPhone: z.string(),
   password: z.string(),
 });
 
@@ -149,7 +189,18 @@ type AdminLoginResult = AdminLoginSuccess | AdminLoginError;
 
 export async function adminLogin(values: z.infer<typeof adminLoginSchema>): Promise<AdminLoginResult> {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+    let email = values.emailOrPhone;
+    const isEmail = z.string().email().safeParse(email).success;
+    
+    if (!isEmail) {
+        const foundEmail = await findEmailByPhone(email);
+        if (!foundEmail) {
+            return { success: false, error: "No account found with this phone number." };
+        }
+        email = foundEmail;
+    }
+
+    const userCredential = await signInWithEmailAndPassword(auth, email, values.password);
     const user = userCredential.user;
 
     const userDocRef = doc(db, "users", user.uid);
@@ -162,13 +213,13 @@ export async function adminLogin(values: z.infer<typeof adminLoginSchema>): Prom
       }
     }
     
-    // Explicitly sign out non-admins to prevent session confusion
+    // Sign out the user if they are not an admin
     await signOut(auth);
     return { success: false, error: "You are not authorized to access this page." };
 
   } catch (error: any) {
     // Handle generic errors like wrong password
-    return { success: false, error: "Invalid email or password." };
+    return { success: false, error: "Invalid credentials." };
   }
 }
 
@@ -206,3 +257,4 @@ export async function findOrCreateUser(
     });
   }
 }
+

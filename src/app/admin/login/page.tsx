@@ -32,7 +32,7 @@ import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
+  emailOrPhone: z.string().min(1, { message: "This field is required." }),
   password: z
     .string()
     .min(6, { message: "Password must be at least 6 characters." }),
@@ -40,18 +40,12 @@ const loginSchema = z.object({
 
 export default function AdminLoginPage() {
   const { toast } = useToast();
-  const [isClient, setIsClient] = React.useState(false);
   const authContext = React.useContext(AuthContext);
   const router = useRouter();
 
-
-  React.useEffect(() => {
-    setIsClient(true);
-  }, []);
-
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { emailOrPhone: "", password: "" },
   });
 
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
@@ -62,7 +56,7 @@ export default function AdminLoginPage() {
         title: "Admin Login Successful",
         description: "Redirecting to the Admin Dashboard...",
       });
-      // Directly set the auth state before redirecting
+      // Set auth state and redirect
       authContext.setAuth(auth.currentUser, result.profile);
       router.push("/admin/dashboard");
     } else {
@@ -96,50 +90,48 @@ export default function AdminLoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {isClient && (
-                <Form {...loginForm}>
-                  <form
-                    onSubmit={loginForm.handleSubmit(onLoginSubmit)}
-                    className="space-y-4"
+              <Form {...loginForm}>
+                <form
+                  onSubmit={loginForm.handleSubmit(onLoginSubmit)}
+                  className="space-y-4"
+                >
+                  <FormField
+                    control={loginForm.control}
+                    name="emailOrPhone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email or Phone</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={loginForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={loginForm.formState.isSubmitting}
                   >
-                    <FormField
-                      control={loginForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input placeholder="admin@example.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={loginForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={loginForm.formState.isSubmitting}
-                    >
-                      {loginForm.formState.isSubmitting
-                        ? "Logging in..."
-                        : "Login"}
-                    </Button>
-                  </form>
-                </Form>
-              )}
+                    {loginForm.formState.isSubmitting
+                      ? "Logging in..."
+                      : "Login"}
+                  </Button>
+                </form>
+              </Form>
             </CardContent>
           </Card>
         </div>
@@ -156,3 +148,4 @@ export default function AdminLoginPage() {
     </div>
   );
 }
+
