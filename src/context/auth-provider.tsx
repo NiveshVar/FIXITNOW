@@ -66,20 +66,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (userState) => {
-      setLoading(true);
       setUser(userState);
       if (userState) {
-        const userDocRef = doc(db, "users", userState.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setProfile(userDoc.data() as UserProfile);
-        } else {
-          setProfile(null); // Profile not found
+        try {
+            const userDocRef = doc(db, "users", userState.uid);
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists()) {
+                setProfile(userDoc.data() as UserProfile);
+            } else {
+                setProfile(null);
+            }
+        } catch (error) {
+            console.error("Error fetching user profile:", error);
+            setProfile(null);
+        } finally {
+            setLoading(false);
         }
       } else {
         setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
