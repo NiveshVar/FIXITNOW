@@ -145,21 +145,28 @@ export async function adminLogin(values: z.infer<typeof adminLoginSchema>) {
     const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
     const user = userCredential.user;
 
+    // Re-fetch the user document from Firestore to get the latest profile
     const userDocRef = doc(db, "users", user.uid);
     const userDoc = await getDoc(userDocRef);
 
     if (userDoc.exists()) {
       const userProfile = userDoc.data() as UserProfile;
+      // Check if the re-fetched profile has the 'admin' role
       if (userProfile.role === 'admin') {
         return { success: true };
       } else {
+        // If not, sign the user out to prevent confusion and deny access
+        await auth.signOut();
         return { success: false, error: "You are not authorized to access this page." };
       }
     } else {
+      // User exists in Auth but not in Firestore users collection
+      await auth.signOut();
       return { success: false, error: "User profile not found." };
     }
   } catch (error: any) {
-    return { success: false, error: error.message };
+    // Handle incorrect password, user not found in Auth, etc.
+    return { success: false, error: "Invalid email or password." };
   }
 }
 
