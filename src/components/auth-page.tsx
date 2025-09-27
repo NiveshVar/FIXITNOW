@@ -70,6 +70,7 @@ export default function AuthPage() {
             title: "Login Successful",
             description: "Welcome back!",
         });
+        window.location.reload();
     } else {
       toast({
         variant: "destructive",
@@ -251,7 +252,7 @@ export default function AuthPage() {
                         disabled={signupForm.formState.isSubmitting}
                       >
                         {signupForm.formState.isSubmitting
-                          ? "Creating Account..."
+                          ? "Signing up..."
                           : "Sign Up"}
                       </Button>
                     </form>
