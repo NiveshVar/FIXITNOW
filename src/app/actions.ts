@@ -41,6 +41,7 @@ const signupSchema = z.object({
 export async function handleLogin(values: z.infer<typeof loginSchema>) {
   try {
     await signInWithEmailAndPassword(auth, values.email, values.password);
+    revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     return { error: error.message };
@@ -61,6 +62,7 @@ export async function handleSignUp(values: z.infer<typeof signupSchema>) {
       email: user.email,
       role: "user", // Default role
     });
+    revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     return { error: error.message };
@@ -82,6 +84,7 @@ export async function handleGoogleSignIn() {
 
 export async function handleLogout() {
   await signOut(auth);
+  revalidatePath("/");
 }
 
 const reportSchema = z.object({
