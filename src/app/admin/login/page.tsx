@@ -38,7 +38,6 @@ const loginSchema = z.object({
 
 export default function AdminLoginPage() {
   const { toast } = useToast();
-  const router = useRouter();
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
@@ -56,9 +55,10 @@ export default function AdminLoginPage() {
     if (result.success) {
       toast({
         title: "Admin Login Successful",
-        description: "Welcome to the Admin Dashboard.",
+        description: "Redirecting to the Admin Dashboard...",
       });
-      router.push("/admin/dashboard");
+      // Use window.location.href to force a full page reload, ensuring auth state is updated.
+      window.location.href = "/admin/dashboard";
     } else {
       toast({
         variant: "destructive",
