@@ -1,7 +1,8 @@
+
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode } from "react";
-import { onAuthStateChanged, User, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
+import { onAuthStateChanged, User, getRedirectResult } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { UserProfile } from "@/lib/types";
@@ -25,15 +26,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Handle the redirect result from Google Sign-In
-    getRedirectResult(auth)
-      .then(async (result) => {
+    // This function runs when the component mounts.
+    // It handles the redirect result from Google Sign-In and sets up the listener for auth state changes.
+
+    const handleAuth = async () => {
+      setLoading(true);
+
+      try {
+        const result = await getRedirectResult(auth);
         if (result) {
+          // User just signed in via redirect.
           const user = result.user;
           const userDocRef = doc(db, "users", user.uid);
           const userDoc = await getDoc(userDocRef);
 
           if (!userDoc.exists()) {
+            // Create a new user document if it's their first time.
             await setDoc(userDocRef, {
               uid: user.uid,
               name: user.displayName,
@@ -42,39 +50,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
           }
         }
-      })
-      .catch((error) => {
-        console.error("Google Sign-in redirect error:", error);
-      })
-      .finally(() => {
-        // Continue with the regular auth state listener
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-          setLoading(true);
-          if (user) {
-            setUser(user);
-            if (user.phoneNumber && !user.email) {
+      } catch (error) {
+        console.error("Google Sign-in redirect result error:", error);
+      }
+
+      // Set up the listener for auth state changes.
+      // This will fire right after the redirect is handled, and on subsequent page loads.
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          setUser(user);
+          // Handle phone users who might not have an email
+           if (user.phoneNumber && !user.email) {
               await findOrCreateUser(user.uid, user.phoneNumber);
             }
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
-              setProfile(userDoc.data() as UserProfile);
-            } else {
-              const freshUserDoc = await getDoc(userDocRef);
-              if (freshUserDoc.exists()) {
-                setProfile(freshUserDoc.data() as UserProfile);
-              } else {
-                setProfile(null);
-              }
-            }
+          // Fetch the user's profile from Firestore.
+          const userDocRef = doc(db, "users", user.uid);
+          const userDoc = await getDoc(userDocRef);
+          if (userDoc.exists()) {
+            setProfile(userDoc.data() as UserProfile);
           } else {
-            setUser(null);
+            // This case might happen if the doc creation was delayed.
+            // A re-fetch might be needed in complex scenarios, but for now, null is safe.
             setProfile(null);
           }
-          setLoading(false);
-        });
-        return () => unsubscribe();
+        } else {
+          // No user is signed in.
+          setUser(null);
+          setProfile(null);
+        }
+        setLoading(false); // Set loading to false after all auth checks are done.
       });
+
+      // Cleanup subscription on unmount
+      return unsubscribe;
+    };
+
+    handleAuth();
+
   }, []);
 
   const value = { user, profile, loading };
