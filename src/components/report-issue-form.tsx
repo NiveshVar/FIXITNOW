@@ -156,7 +156,8 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
       (error) => {
         toast({ variant: "destructive", title: "Unable to retrieve your location.", description: error.message });
         setIsFetchingLocation(false);
-      }
+      },
+      { enableHighAccuracy: true }
     );
   };
 
