@@ -1,7 +1,6 @@
 
 "use server";
 
-import { signOut } from "firebase/auth";
 import {
   addDoc,
   collection,
@@ -16,17 +15,12 @@ import {
 } from "firebase/firestore";
 import axios from "axios";
 import { z } from "zod";
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { classifyIssue } from "@/ai/flows/image-classification-for-issue";
 import { detectDuplicateIssue } from "@/ai/flows/duplicate-issue-detection";
 import { revalidatePath } from "next/cache";
 import { ComplaintStatus } from "@/lib/types";
 
-
-export async function handleLogout() {
-  await signOut(auth);
-  revalidatePath("/");
-}
 
 const reportSchema = z.object({
   title: z.string().min(5),

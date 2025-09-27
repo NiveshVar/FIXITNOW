@@ -2,22 +2,31 @@
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { handleLogout } from "@/app/actions";
 import { LogOut } from "lucide-react";
 import { Logo } from "./icons/logo";
 import { useToast } from "@/hooks/use-toast";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function Header() {
   const { profile } = useAuth();
   const { toast } = useToast();
 
   const onLogout = async () => {
-    await handleLogout();
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
-    });
-    window.location.reload();
+    try {
+      await signOut(auth);
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+      window.location.reload();
+    } catch (error) {
+        toast({
+            variant: "destructive",
+            title: "Logout Failed",
+            description: "Something went wrong. Please try again.",
+        });
+    }
   };
 
   return (
