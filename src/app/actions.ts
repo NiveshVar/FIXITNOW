@@ -142,7 +142,11 @@ const loginWithEmailOrPhoneSchema = z.object({
   password: z.string(),
 });
 
-async function findEmailByPhone(phone: string): Promise<string | null> {
+type LoginSuccess = { success: true; profile: UserProfile };
+type LoginError = { success: false; error: string; profile?: null };
+type LoginResult = LoginSuccess | LoginError;
+
+async function findUserByPhone(phone: string): Promise<UserProfile | null> {
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("phone", "==", phone));
     const querySnapshot = await getDocs(q);
@@ -152,26 +156,45 @@ async function findEmailByPhone(phone: string): Promise<string | null> {
     }
 
     const userDoc = querySnapshot.docs[0];
-    return userDoc.data().email as string;
+    return userDoc.data() as UserProfile;
 }
 
-export async function loginWithEmailOrPhone(values: z.infer<typeof loginWithEmailOrPhoneSchema>) {
+async function findUserByEmail(email: string): Promise<UserProfile | null> {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return null;
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    return userDoc.data() as UserProfile;
+}
+
+export async function loginWithEmailOrPhone(values: z.infer<typeof loginWithEmailOrPhoneSchema>): Promise<LoginResult> {
     try {
+        let profile: UserProfile | null = null;
         let email = values.emailOrPhone;
         const isEmail = z.string().email().safeParse(email).success;
 
-        if (!isEmail) {
-            const foundEmail = await findEmailByPhone(email);
-            if (!foundEmail) {
-                return { success: false, error: "No account found with this phone number." };
+        if (isEmail) {
+            profile = await findUserByEmail(email);
+        } else {
+            profile = await findUserByPhone(email);
+            if (profile) {
+                email = profile.email;
             }
-            email = foundEmail;
+        }
+
+        if (!profile) {
+            return { success: false, error: "No account found with this email or phone number." };
         }
 
         await signInWithEmailAndPassword(auth, email, values.password);
-        return { success: true };
+        return { success: true, profile: profile };
+
     } catch (error: any) {
-        // Handle generic errors like wrong password
         return { success: false, error: "Invalid credentials." };
     }
 }
@@ -182,43 +205,33 @@ const adminLoginSchema = z.object({
   password: z.string(),
 });
 
-type AdminLoginSuccess = { success: true; profile: UserProfile };
-type AdminLoginError = { success: false; error: string; profile?: null };
-type AdminLoginResult = AdminLoginSuccess | AdminLoginError;
-
-
-export async function adminLogin(values: z.infer<typeof adminLoginSchema>): Promise<AdminLoginResult> {
+export async function adminLogin(values: z.infer<typeof adminLoginSchema>): Promise<LoginResult> {
   try {
+    let profile: UserProfile | null = null;
     let email = values.emailOrPhone;
     const isEmail = z.string().email().safeParse(email).success;
-    
-    if (!isEmail) {
-        const foundEmail = await findEmailByPhone(email);
-        if (!foundEmail) {
-            return { success: false, error: "No account found with this phone number." };
+
+    if (isEmail) {
+        profile = await findUserByEmail(email);
+    } else {
+        profile = await findUserByPhone(email);
+        if (profile) {
+            email = profile.email;
         }
-        email = foundEmail;
     }
 
-    const userCredential = await signInWithEmailAndPassword(auth, email, values.password);
-    const user = userCredential.user;
-
-    const userDocRef = doc(db, "users", user.uid);
-    const userDoc = await getDoc(userDocRef);
-
-    if (userDoc.exists()) {
-      const userProfile = userDoc.data() as UserProfile;
-      if (userProfile.role === 'admin') {
-        return { success: true, profile: userProfile };
-      }
+    if (!profile) {
+        return { success: false, error: "No account found with this email or phone number." };
     }
     
-    // Sign out the user if they are not an admin
-    await signOut(auth);
-    return { success: false, error: "You are not authorized to access this page." };
+    if (profile.role !== 'admin') {
+      return { success: false, error: "You are not authorized to access this page." };
+    }
+
+    await signInWithEmailAndPassword(auth, email, values.password);
+    return { success: true, profile: profile };
 
   } catch (error: any) {
-    // Handle generic errors like wrong password
     return { success: false, error: "Invalid credentials." };
   }
 }
@@ -257,4 +270,3 @@ export async function findOrCreateUser(
     });
   }
 }
-

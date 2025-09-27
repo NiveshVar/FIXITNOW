@@ -33,6 +33,8 @@ import { Logo } from "./icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
 import { loginWithEmailOrPhone } from "@/app/actions";
+import { AuthContext } from "@/context/auth-provider";
+import { useRouter } from "next/navigation";
 
 const loginSchema = z.object({
   emailOrPhone: z.string().min(1, { message: "This field is required." }),
@@ -52,7 +54,9 @@ const signupSchema = z.object({
 
 export default function AuthPage() {
   const { toast } = useToast();
-  
+  const authContext = React.useContext(AuthContext);
+  const router = useRouter();
+
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: { emailOrPhone: "", password: "" },
@@ -65,12 +69,13 @@ export default function AuthPage() {
 
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
     const result = await loginWithEmailOrPhone(values);
-    if (result.success) {
+    if (result.success && result.profile) {
         toast({
             title: "Login Successful",
             description: "Welcome back!",
         });
-        window.location.reload();
+        authContext.setAuth(auth.currentUser, result.profile);
+        router.push("/");
     } else {
       toast({
         variant: "destructive",
@@ -99,6 +104,10 @@ export default function AuthPage() {
         title: "Sign Up Successful",
         description: "You can now log in.",
       });
+      // Switch to login tab
+       const loginTab = document.querySelector('[data-radix-collection-item][value="login"]') as HTMLButtonElement | null;
+       loginTab?.click();
+
     } catch (error: any) {
       toast({
         variant: "destructive",

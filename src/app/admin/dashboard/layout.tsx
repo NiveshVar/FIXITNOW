@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 import React from "react";
+import AdminHeader from "@/components/admin-header";
 
 export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
     const { profile, loading } = useAuth();
@@ -50,5 +51,14 @@ export default function AdminDashboardLayout({ children }: { children: React.Rea
       )
     }
 
-    return <>{children}</>;
+    return (
+      <div className="min-h-screen bg-background">
+        <AdminHeader />
+        <main className="flex-1 p-4 md:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto">
+                {children}
+            </div>
+        </main>
+      </div>
+    );
 }
