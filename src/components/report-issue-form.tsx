@@ -1,0 +1,294 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import Image from "next/image";
+import {
+  Camera,
+  Loader2,
+  MapPin,
+  Trash2,
+  Trees,
+  Wrench,
+  Send,
+  Sparkles,
+  HelpCircle,
+} from "lucide-react";
+import { PawPrintIcon } from "@/components/icons/logo";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { createComplaint } from "@/app/actions";
+import { fileToDataUri } from "@/lib/utils";
+import { classifyIssue } from "@/ai/flows/image-classification-for-issue";
+import { ChatbotIssueReportingOutput } from "@/ai/flows/chatbot-issue-reporting";
+import type { ComplaintCategory } from "@/lib/types";
+
+const reportSchema = z.object({
+  title: z.string().min(5, { message: "Title must be at least 5 characters." }),
+  description: z.string().min(10, { message: "Please provide a more detailed description." }),
+  address: z.string().min(10, { message: "Please provide a specific address or landmark." }),
+  category: z.enum(["pothole", "tree fall", "garbage", "stray dog", "other"]),
+  photo: z.any().optional(),
+});
+
+type ReportFormValues = z.infer<typeof reportSchema>;
+
+const categoryIcons: Record<ComplaintCategory, React.ElementType> = {
+  pothole: Wrench,
+  "tree fall": Trees,
+  garbage: Trash2,
+  "stray dog": PawPrintIcon,
+  other: HelpCircle,
+};
+
+interface ReportIssueFormProps {
+  prefillData: ChatbotIssueReportingOutput | null;
+  onClearPrefill: () => void;
+}
+
+export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueFormProps) {
+  const { user, profile } = useAuth();
+  const { toast } = useToast();
+  const [preview, setPreview] = useState<string | null>(null);
+  const [photoDataUri, setPhotoDataUri] = useState<string | undefined>(undefined);
+  const [isClassifying, setIsClassifying] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const form = useForm<ReportFormValues>({
+    resolver: zodResolver(reportSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      address: "",
+      category: "other",
+    },
+  });
+
+  useEffect(() => {
+    if (prefillData) {
+      form.setValue("title", prefillData.category);
+      form.setValue("description", prefillData.description);
+      form.setValue("address", prefillData.locationDescription);
+      if (["pothole", "tree fall", "garbage", "stray dog"].includes(prefillData.category)) {
+        form.setValue("category", prefillData.category as ComplaintCategory);
+      }
+      toast({
+        title: "Information Pre-filled",
+        description: "The chatbot has filled the form for you. Please review and submit.",
+      });
+      onClearPrefill();
+    }
+  }, [prefillData, form, toast, onClearPrefill]);
+
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      form.setValue("photo", file);
+      const uri = await fileToDataUri(file);
+      setPreview(uri);
+      setPhotoDataUri(uri);
+
+      if (form.getValues("category") === "other") {
+        setIsClassifying(true);
+        try {
+          const result = await classifyIssue({ photoDataUri: uri });
+          if (result.category) {
+            form.setValue("category", result.category);
+            toast({
+              title: "AI Classification Complete",
+              description: `We've categorized this issue as: ${result.category}.`,
+            });
+          }
+        } catch (e) {
+          toast({ variant: "destructive", title: "AI Classification Failed" });
+        } finally {
+          setIsClassifying(false);
+        }
+      }
+    }
+  };
+
+  const onSubmit = async (values: ReportFormValues) => {
+    if (!user || !profile) {
+      toast({ variant: "destructive", title: "You must be logged in to report an issue." });
+      return;
+    }
+    const result = await createComplaint({
+      ...values,
+      photoDataUri,
+      userId: user.uid,
+      userName: profile.name,
+    });
+
+    if (result.error) {
+      toast({ variant: "destructive", title: "Failed to report issue", description: result.error });
+    } else {
+      toast({ title: "Issue Reported Successfully!", description: "Thank you for your contribution." });
+      form.reset();
+      setPreview(null);
+      setPhotoDataUri(undefined);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+  
+  const category = form.watch("category");
+  const CategoryIcon = categoryIcons[category];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Report a New Community Issue</CardTitle>
+        <CardDescription>
+          Fill out the details below to report an issue. Your contribution helps improve our community.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Issue Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Large pothole on Main St" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Provide details about the issue, its size, and impact."
+                          className="resize-none"
+                          rows={5}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location / Address</FormLabel>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <FormControl>
+                          <Input pl-10 placeholder="e.g., Near 123 Main St, opposite the park" {...field} />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Category</FormLabel>
+                       <div className="relative">
+                          <CategoryIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="pl-10">
+                                <SelectValue placeholder="Select an issue category" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="pothole">Pothole</SelectItem>
+                              <SelectItem value="tree fall">Tree Fall</SelectItem>
+                              <SelectItem value="garbage">Garbage</SelectItem>
+                              <SelectItem value="stray dog">Stray Dog</SelectItem>
+                              <SelectItem value="other">Other (Classify with AI)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                       </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+              </div>
+              <div className="space-y-2">
+                 <FormLabel>Photo of Issue</FormLabel>
+                 <FormControl>
+                    <Input type="file" accept="image/*" onChange={handleFileChange} className="hidden" ref={fileInputRef} id="photo-upload" />
+                 </FormControl>
+                <Card 
+                    className="aspect-video w-full flex items-center justify-center border-2 border-dashed hover:border-primary transition-colors cursor-pointer"
+                    onClick={() => document.getElementById('photo-upload')?.click()}
+                >
+                    {preview ? (
+                        <div className="relative w-full h-full">
+                            <Image src={preview} alt="Issue preview" fill className="object-contain rounded-md" />
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="icon"
+                                className="absolute top-2 right-2 h-7 w-7"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPreview(null);
+                                    setPhotoDataUri(undefined);
+                                    form.setValue("photo", null);
+                                    if(fileInputRef.current) fileInputRef.current.value = "";
+                                }}
+                            >
+                                <Trash2 className="h-4 w-4"/>
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="text-center text-muted-foreground">
+                            <Camera className="mx-auto h-12 w-12"/>
+                            <p>Click to upload a photo</p>
+                        </div>
+                    )}
+                </Card>
+                 {isClassifying && (
+                    <div className="flex items-center text-sm text-muted-foreground">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Sparkles className="mr-2 h-4 w-4 text-primary" />
+                        AI is classifying the image...
+                    </div>
+                 )}
+              </div>
+            </div>
+            <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>
+              ) : (
+                <><Send className="mr-2 h-4 w-4" /> Submit Report</>
+              )}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
+  );
+}
