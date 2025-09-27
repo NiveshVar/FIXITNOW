@@ -58,7 +58,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (userState) => {
-      setLoading(true);
       if (userState) {
         setUser(userState);
         const userDocRef = doc(db, "users", userState.uid);
@@ -66,12 +65,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (userDoc.exists()) {
           setProfile(userDoc.data() as UserProfile);
         } else {
-          setProfile(null);
+          setProfile(null); // Profile not found
         }
       } else {
         setUser(null);
         setProfile(null);
       }
+      // Only set loading to false after all auth-related state is settled.
       setLoading(false);
     });
 
