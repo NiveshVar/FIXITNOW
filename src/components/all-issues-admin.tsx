@@ -1,3 +1,4 @@
+
 "use client";
 import * as React from "react";
 import {
@@ -42,7 +43,8 @@ import {
 } from "./ui/select";
 import { updateComplaintStatus } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Eye } from "lucide-react";
+import IssueDetailsDialog from "./issue-details-dialog";
 
 
 export default function AllIssuesAdmin() {
@@ -52,6 +54,7 @@ export default function AllIssuesAdmin() {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const { toast } = useToast();
+  const [selectedComplaint, setSelectedComplaint] = React.useState<Complaint | null>(null);
 
   React.useEffect(() => {
     setLoading(true);
@@ -99,7 +102,7 @@ export default function AllIssuesAdmin() {
     {
       accessorKey: "location.address",
       header: "Address",
-      cell: ({ row }) => <div>{row.original.location.address}</div>,
+      cell: ({ row }) => <div className="truncate max-w-xs">{row.original.location.address}</div>,
     },
     {
       accessorKey: "timestamp",
@@ -109,7 +112,7 @@ export default function AllIssuesAdmin() {
       ),
     },
     {
-      id: "actions",
+      id: "statusUpdate",
       header: "Update Status",
       cell: ({ row }) => {
         const complaint = row.original;
@@ -118,7 +121,7 @@ export default function AllIssuesAdmin() {
             defaultValue={complaint.status}
             onValueChange={(value) => handleStatusChange(complaint.id, value as ComplaintStatus)}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Change status" />
             </SelectTrigger>
             <SelectContent>
@@ -130,6 +133,19 @@ export default function AllIssuesAdmin() {
         );
       },
     },
+    {
+        id: "actions",
+        header: "Actions",
+        cell: ({ row }) => {
+            const complaint = row.original;
+            return (
+                <Button variant="outline" size="icon" onClick={() => setSelectedComplaint(complaint)}>
+                    <Eye className="h-4 w-4" />
+                    <span className="sr-only">View Details</span>
+                </Button>
+            );
+        },
+    }
   ];
 
   const table = useReactTable({
@@ -150,6 +166,7 @@ export default function AllIssuesAdmin() {
   });
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>All Reported Issues</CardTitle>
@@ -264,5 +281,17 @@ export default function AllIssuesAdmin() {
         </div>
       </CardContent>
     </Card>
+    {selectedComplaint && (
+        <IssueDetailsDialog
+            complaint={selectedComplaint}
+            isOpen={!!selectedComplaint}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    setSelectedComplaint(null);
+                }
+            }}
+        />
+    )}
+    </>
   );
 }
