@@ -28,7 +28,7 @@ export default function ComplaintCard({ complaint }: ComplaintCardProps) {
           </div>
         )}
         <CardTitle>{complaint.title}</CardTitle>
-        <CardDescription className="flex items-center gap-2 pt-1">
+        <CardDescription as="div" className="flex items-center gap-2 pt-1">
           <ComplaintStatusBadge status={complaint.status} />
           <span className="capitalize text-xs text-muted-foreground">{complaint.category}</span>
         </CardDescription>
