@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -59,7 +60,7 @@ export default function Chatbot({ onSubmit }: ChatbotProps) {
             <span className="sr-only">Open Chatbot</span>
           </Button>
         </SheetTrigger>
-        <SheetContent>
+        <SheetContent className="flex flex-col">
           <SheetHeader>
             <SheetTitle>Chatbot Reporting</SheetTitle>
             <SheetDescription>
@@ -67,27 +68,25 @@ export default function Chatbot({ onSubmit }: ChatbotProps) {
               For example: &quot;There is a huge pothole on Elm street near the library, it caused a flat tire.&quot;
             </SheetDescription>
           </SheetHeader>
-          <div className="py-4 h-full flex flex-col">
-            <div className="flex-grow"></div>
-            <form onSubmit={handleChatSubmit}>
-              <div className="flex w-full items-center space-x-2">
-                <Input
-                  type="text"
-                  placeholder="Describe the issue..."
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  disabled={isLoading}
-                />
-                <Button type="submit" disabled={isLoading || !input.trim()}>
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
+          <div className="flex-grow" />
+          <form onSubmit={handleChatSubmit} className="py-4">
+            <div className="flex w-full items-center space-x-2">
+              <Input
+                type="text"
+                placeholder="Describe the issue..."
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={isLoading}
+              />
+              <Button type="submit" disabled={isLoading || !input.trim()}>
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </form>
            <SheetFooter>
                 <div className="text-xs text-muted-foreground flex items-center justify-center w-full">
                     <Sparkles className="h-3 w-3 mr-1 text-primary"/>
