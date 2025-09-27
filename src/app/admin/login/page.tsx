@@ -27,6 +27,8 @@ import { Logo } from "@/components/icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
 import { adminLogin } from "@/app/actions";
+import { AuthContext } from "@/context/auth-provider";
+import { useRouter } from "next/navigation";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -38,6 +40,9 @@ const loginSchema = z.object({
 export default function AdminLoginPage() {
   const { toast } = useToast();
   const [isClient, setIsClient] = React.useState(false);
+  const authContext = React.useContext(AuthContext);
+  const router = useRouter();
+
 
   React.useEffect(() => {
     setIsClient(true);
@@ -56,7 +61,9 @@ export default function AdminLoginPage() {
         title: "Admin Login Successful",
         description: "Redirecting to the Admin Dashboard...",
       });
-      window.location.href = "/admin/dashboard";
+      // Force a refresh of the auth state before redirecting
+      await authContext.refreshAuth();
+      router.push("/admin/dashboard");
     } else {
       toast({
         variant: "destructive",
