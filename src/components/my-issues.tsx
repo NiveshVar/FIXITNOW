@@ -1,7 +1,8 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/hooks/use-auth";
 import type { Complaint } from "@/lib/types";
@@ -20,8 +21,7 @@ export default function MyIssues() {
     setLoading(true);
     const q = query(
       collection(db, "complaints"),
-      where("userId", "==", user.uid),
-      orderBy("timestamp", "desc")
+      where("userId", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -29,6 +29,14 @@ export default function MyIssues() {
       querySnapshot.forEach((doc) => {
         userComplaints.push({ id: doc.id, ...doc.data() } as Complaint);
       });
+      
+      // Sort complaints by timestamp client-side
+      userComplaints.sort((a, b) => {
+        const dateA = a.timestamp?.toDate()?.getTime() || 0;
+        const dateB = b.timestamp?.toDate()?.getTime() || 0;
+        return dateB - dateA;
+      });
+
       setComplaints(userComplaints);
       setLoading(false);
     });
