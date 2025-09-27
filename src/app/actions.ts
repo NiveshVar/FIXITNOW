@@ -5,7 +5,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
 } from "firebase/auth";
 import {
   addDoc,
@@ -70,22 +70,10 @@ export async function handleSignUp(values: z.infer<typeof signupSchema>) {
 export async function handleGoogleSignIn() {
   const provider = new GoogleAuthProvider();
   try {
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-    
-    // Check if user already exists
-    const userDocRef = doc(db, "users", user.uid);
-    const userDoc = await getDoc(userDocRef);
-
-    if (!userDoc.exists()) {
-      // Create a new user document
-      await setDoc(userDocRef, {
-        uid: user.uid,
-        name: user.displayName,
-        email: user.email,
-        role: "user",
-      });
-    }
+    // Using signInWithRedirect is more robust in different environments
+    await signInWithRedirect(auth, provider);
+    // The user will be redirected to Google's sign-in page.
+    // The result is handled in the AuthProvider's useEffect.
     return { success: true };
   } catch (error: any) {
      return { error: error.message };
