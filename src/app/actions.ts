@@ -140,7 +140,12 @@ const adminLoginSchema = z.object({
   password: z.string(),
 });
 
-export async function adminLogin(values: z.infer<typeof adminLoginSchema>) {
+type AdminLoginSuccess = { success: true; profile: UserProfile };
+type AdminLoginError = { success: false; error: string; profile?: null };
+type AdminLoginResult = AdminLoginSuccess | AdminLoginError;
+
+
+export async function adminLogin(values: z.infer<typeof adminLoginSchema>): Promise<AdminLoginResult> {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
     const user = userCredential.user;
@@ -151,15 +156,16 @@ export async function adminLogin(values: z.infer<typeof adminLoginSchema>) {
     if (userDoc.exists()) {
       const userProfile = userDoc.data() as UserProfile;
       if (userProfile.role === 'admin') {
-        return { success: true };
+        return { success: true, profile: userProfile };
       }
     }
     
-    // Sign out the user if they are not an admin
+    // Explicitly sign out non-admins to prevent session confusion
     await signOut(auth);
     return { success: false, error: "You are not authorized to access this page." };
 
   } catch (error: any) {
+    // Handle generic errors like wrong password
     return { success: false, error: "Invalid email or password." };
   }
 }

@@ -13,6 +13,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   refreshAuth: () => Promise<void>;
+  setAuth: (user: User | null, profile: UserProfile | null) => void;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -20,6 +21,7 @@ export const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   refreshAuth: async () => {},
+  setAuth: () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -42,6 +44,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       setProfile(null);
     }
+  }, []);
+
+  const setAuth = useCallback((user: User | null, profile: UserProfile | null) => {
+    setUser(user);
+    setProfile(profile);
+    setLoading(false);
   }, []);
 
 
@@ -92,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, [handleAuthState]);
 
-  const value = { user, profile, loading, refreshAuth };
+  const value = { user, profile, loading, refreshAuth, setAuth };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

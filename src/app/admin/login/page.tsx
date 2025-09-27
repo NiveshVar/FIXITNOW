@@ -29,6 +29,7 @@ import placeholderImage from "@/lib/placeholder-images.json";
 import { adminLogin } from "@/app/actions";
 import { AuthContext } from "@/context/auth-provider";
 import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -56,13 +57,13 @@ export default function AdminLoginPage() {
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
     const result = await adminLogin(values);
     
-    if (result.success) {
+    if (result.success && result.profile) {
       toast({
         title: "Admin Login Successful",
         description: "Redirecting to the Admin Dashboard...",
       });
-      // Force a refresh of the auth state before redirecting
-      await authContext.refreshAuth();
+      // Directly set the auth state before redirecting
+      authContext.setAuth(auth.currentUser, result.profile);
       router.push("/admin/dashboard");
     } else {
       toast({
