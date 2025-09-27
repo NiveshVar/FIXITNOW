@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -199,7 +200,7 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                       <div className="relative">
                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <FormControl>
-                          <Input pl-10 placeholder="e.g., Near 123 Main St, opposite the park" {...field} />
+                          <Input className="pl-10" placeholder="e.g., Near 123 Main St, opposite the park" {...field} />
                         </FormControl>
                       </div>
                       <FormMessage />
