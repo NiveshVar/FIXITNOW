@@ -20,7 +20,7 @@ import { classifyIssue } from "@/ai/flows/image-classification-for-issue";
 import { detectDuplicateIssue } from "@/ai/flows/duplicate-issue-detection";
 import { revalidatePath } from "next/cache";
 import { ComplaintStatus, UserProfile } from "@/lib/types";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 
 const reportSchema = z.object({
@@ -155,7 +155,8 @@ export async function adminLogin(values: z.infer<typeof adminLoginSchema>) {
       }
     }
     
-    await auth.signOut();
+    // Sign out the user if they are not an admin
+    await signOut(auth);
     return { success: false, error: "You are not authorized to access this page." };
 
   } catch (error: any) {
