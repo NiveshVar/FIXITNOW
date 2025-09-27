@@ -39,9 +39,11 @@ const reportSchema = z.object({
 
 export async function createComplaint(values: z.infer<typeof reportSchema>) {
   try {
-    // 1. Initial AI Classification if photo exists
+    const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+
+    // 1. Initial AI Classification if photo exists and key is present
     let category = values.category;
-    if (values.photoDataUri && category === "other") {
+    if (values.photoDataUri && category === "other" && hasGeminiKey) {
       const classificationResult = await classifyIssue({ photoDataUri: values.photoDataUri });
       if (classificationResult.category) {
         category = classificationResult.category;
@@ -97,8 +99,8 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
 
     const complaintRef = await addDoc(collection(db, "complaints"), complaintData);
 
-    // 4. AI Duplicate Detection if photo exists
-    if (values.photoDataUri) {
+    // 4. AI Duplicate Detection if photo exists and key is present
+    if (values.photoDataUri && hasGeminiKey) {
       const duplicateResult = await detectDuplicateIssue({
         photoDataUri: values.photoDataUri,
         latitude: complaintData.location.lat,
