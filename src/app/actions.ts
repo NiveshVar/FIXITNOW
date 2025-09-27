@@ -13,9 +13,9 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { getDownloadURL, ref, uploadString } from "firebase/storage";
+import axios from "axios";
 import { z } from "zod";
-import { auth, db, storage } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { classifyIssue } from "@/ai/flows/image-classification-for-issue";
 import { detectDuplicateIssue } from "@/ai/flows/duplicate-issue-detection";
 import { revalidatePath } from "next/cache";
@@ -48,7 +48,37 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
       }
     }
 
-    // 2. Create complaint document
+    // 2. Upload photo to ImgBB if it exists
+    let photoURL = "";
+    if (values.photoDataUri) {
+      const apiKey = process.env.IMGBB_API_KEY;
+      if (!apiKey) {
+        throw new Error("ImgBB API key is not configured.");
+      }
+
+      const formData = new FormData();
+      // Remove the data URI prefix before sending
+      const base64Image = values.photoDataUri.split(',')[1];
+      formData.append("image", base64Image);
+
+      const response = await axios.post(
+        `https://api.imgbb.com/1/upload?key=${apiKey}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      if (response.data.success) {
+        photoURL = response.data.data.url;
+      } else {
+        throw new Error("Image upload to ImgBB failed.");
+      }
+    }
+
+    // 3. Create complaint document
     const complaintData = {
       userId: values.userId,
       userName: values.userName,
@@ -60,21 +90,12 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
         address: values.address,
       },
       category: category,
-      photoURL: "",
+      photoURL: photoURL,
       status: "Pending" as const,
       timestamp: serverTimestamp(),
     };
 
     const complaintRef = await addDoc(collection(db, "complaints"), complaintData);
-
-    // 3. Upload photo if it exists
-    let photoURL = "";
-    if (values.photoDataUri) {
-      const storageRef = ref(storage, `complaint_photos/${complaintRef.id}.jpg`);
-      await uploadString(storageRef, values.photoDataUri, "data_url");
-      photoURL = await getDownloadURL(storageRef);
-      await updateDoc(complaintRef, { photoURL });
-    }
 
     // 4. AI Duplicate Detection if photo exists
     if (values.photoDataUri) {
@@ -96,7 +117,8 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     revalidatePath("/");
     return { success: true, id: complaintRef.id };
   } catch (error: any) {
-    return { error: error.message };
+    const errorMessage = error.response?.data?.error?.message || error.message;
+    return { error: `Failed to create complaint: ${errorMessage}` };
   }
 }
 
