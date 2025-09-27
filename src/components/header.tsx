@@ -17,6 +17,7 @@ export default function Header() {
       title: "Logged Out",
       description: "You have been successfully logged out.",
     });
+    window.location.reload();
   };
 
   return (
