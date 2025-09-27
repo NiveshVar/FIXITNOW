@@ -30,7 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { handleLogin, handleSignUp } from "@/app/actions";
+import { handleLogin, handleSignUp, handleGoogleSignIn } from "@/app/actions";
 import { Logo } from "./icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
@@ -40,6 +40,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { Separator } from "./ui/separator";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -65,6 +66,19 @@ const phoneSchema = z.object({
 const otpSchema = z.object({
   otp: z.string().length(6, { message: "OTP must be 6 digits." }),
 });
+
+const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    role="img"
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+  >
+    <title>Google</title>
+    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.62 1.9-5.07 1.9-4.75 0-8.53-3.8-8.53-8.53s3.8-8.53 8.53-8.53c2.47 0 4.5.95 6.13 2.5l2.73-2.73C19.49 1.12 16.38 0 12.48 0 5.88 0 .04 5.88.04 12.48s5.84 12.48 12.44 12.48c3.55 0 6.42-1.25 8.57-3.48 2.3-2.3 3.3-5.38 3.3-9.15 0-.8-.1-1.48-.25-2.15z" />
+  </svg>
+);
+
 
 export default function AuthPage() {
   const { toast } = useToast();
@@ -134,6 +148,17 @@ export default function AuthPage() {
     }
   };
 
+  const onGoogleSignInClick = async () => {
+    const result = await handleGoogleSignIn();
+    if (result.error) {
+      toast({
+        variant: "destructive",
+        title: "Google Sign In Failed",
+        description: result.error,
+      });
+    }
+  };
+
   const onPhoneSubmit = async (values: z.infer<typeof phoneSchema>) => {
     try {
       setupRecaptcha();
@@ -193,7 +218,7 @@ export default function AuthPage() {
           </div>
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="login">Email</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
               <TabsTrigger value="phone">Phone</TabsTrigger>
             </TabsList>
@@ -205,7 +230,7 @@ export default function AuthPage() {
                     Enter your email below to login to your account.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <Form {...loginForm}>
                     <form
                       onSubmit={loginForm.handleSubmit(onLoginSubmit)}
@@ -244,10 +269,24 @@ export default function AuthPage() {
                       >
                         {loginForm.formState.isSubmitting
                           ? "Logging in..."
-                          : "Login"}
+                          : "Login with Email"}
                       </Button>
                     </form>
                   </Form>
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or continue with
+                      </span>
+                    </div>
+                  </div>
+                  <Button variant="outline" className="w-full" onClick={onGoogleSignInClick}>
+                      <GoogleIcon className="mr-2 h-5 w-5" />
+                      Sign in with Google
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -327,7 +366,7 @@ export default function AuthPage() {
                         Sign In with Phone
                       </CardTitle>
                       <CardDescription>
-                        Enter your phone number to receive an OTP.
+                        Enter your phone number to receive an OTP. This requires a paid Firebase plan.
                       </CardDescription>
                     </CardHeader>
                     <CardContent>

@@ -4,11 +4,14 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 import {
   addDoc,
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -61,6 +64,31 @@ export async function handleSignUp(values: z.infer<typeof signupSchema>) {
     return { success: true };
   } catch (error: any) {
     return { error: error.message };
+  }
+}
+
+export async function handleGoogleSignIn() {
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    
+    // Check if user already exists
+    const userDocRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+      // Create a new user document
+      await setDoc(userDocRef, {
+        uid: user.uid,
+        name: user.displayName,
+        email: user.email,
+        role: "user",
+      });
+    }
+    return { success: true };
+  } catch (error: any) {
+     return { error: error.message };
   }
 }
 

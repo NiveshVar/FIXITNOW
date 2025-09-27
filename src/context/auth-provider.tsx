@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       if (user) {
         setUser(user);
+        // This check is for phone auth, but we'll also handle Google sign in user creation here if needed
         if (user.phoneNumber && !user.email) {
           await findOrCreateUser(user.uid, user.phoneNumber);
         }
@@ -37,7 +38,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (userDoc.exists()) {
           setProfile(userDoc.data() as UserProfile);
         } else {
-          setProfile(null);
+           // This case can happen if a user signs in with a method (like Google)
+           // for the first time, and we created the user doc in the handleGoogleSignIn action.
+           // To be safe, we'll fetch it again.
+           const freshUserDoc = await getDoc(userDocRef);
+           if (freshUserDoc.exists()){
+               setProfile(freshUserDoc.data() as UserProfile);
+           } else {
+               setProfile(null);
+           }
         }
       } else {
         setUser(null);
