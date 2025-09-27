@@ -28,6 +28,7 @@ import { handleLogin, handleSignUp } from "@/app/actions";
 import { Logo } from "./icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
+import { useRouter } from "next/navigation";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -46,6 +47,7 @@ const signupSchema = z.object({
 
 export default function AuthPage() {
   const { toast } = useToast();
+  const router = useRouter();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -66,11 +68,12 @@ export default function AuthPage() {
         title: "Login Failed",
         description: result.error,
       });
-    } else {
+    } else if (result.success) {
        toast({
         title: "Login Successful",
         description: "Welcome back!",
       });
+      router.refresh();
     }
   };
 
@@ -82,13 +85,13 @@ export default function AuthPage() {
         title: "Sign Up Failed",
         description: result.error,
       });
-    } else {
+    } else if (result.success) {
       toast({
         title: "Sign Up Successful",
         description: "You can now log in with your credentials.",
       });
-      // Reset form and potentially switch to login tab
       signupForm.reset();
+      router.refresh();
     }
   };
 
