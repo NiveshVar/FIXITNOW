@@ -55,28 +55,29 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     if (values.photoDataUri) {
       const apiKey = process.env.IMGBB_API_KEY;
       if (!apiKey) {
-        throw new Error("ImgBB API key is not configured.");
-      }
-
-      const formData = new FormData();
-      // Remove the data URI prefix before sending
-      const base64Image = values.photoDataUri.split(',')[1];
-      formData.append("image", base64Image);
-
-      const response = await axios.post(
-        `https://api.imgbb.com/1/upload?key=${apiKey}`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
-
-      if (response.data.success) {
-        photoURL = response.data.data.url;
+        // Don't throw an error, just log it. The complaint can still be created.
+        console.error("ImgBB API key is not configured. Proceeding without image upload.");
       } else {
-        throw new Error("Image upload to ImgBB failed.");
+          const formData = new FormData();
+          // Remove the data URI prefix before sending
+          const base64Image = values.photoDataUri.split(',')[1];
+          formData.append("image", base64Image);
+    
+          const response = await axios.post(
+            `https://api.imgbb.com/1/upload?key=${apiKey}`,
+            formData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            }
+          );
+    
+          if (response.data.success && response.data.data.url) {
+            photoURL = response.data.data.url;
+          } else {
+            console.error("Image upload to ImgBB failed. Proceeding without image URL.", response.data);
+          }
       }
     }
 
@@ -120,6 +121,7 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     return { success: true, id: complaintRef.id };
   } catch (error: any) {
     const errorMessage = error.response?.data?.error?.message || error.message;
+    console.error("Failed to create complaint:", errorMessage)
     return { error: `Failed to create complaint: ${errorMessage}` };
   }
 }
