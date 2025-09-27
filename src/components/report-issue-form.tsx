@@ -16,6 +16,7 @@ import {
   Send,
   Sparkles,
   HelpCircle,
+  LocateFixed,
 } from "lucide-react";
 import { PawPrintIcon } from "@/components/icons/logo";
 
@@ -39,6 +40,8 @@ const reportSchema = z.object({
   address: z.string().min(10, { message: "Please provide a specific address or landmark." }),
   category: z.enum(["pothole", "tree fall", "garbage", "stray dog", "other"]),
   photo: z.any().optional(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
@@ -62,6 +65,7 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
   const [preview, setPreview] = useState<string | null>(null);
   const [photoDataUri, setPhotoDataUri] = useState<string | undefined>(undefined);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<ReportFormValues>({
@@ -119,11 +123,55 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
     }
   };
 
+    const handleLocationDetect = async () => {
+    if (!navigator.geolocation) {
+      toast({ variant: "destructive", title: "Geolocation is not supported by your browser." });
+      return;
+    }
+
+    setIsFetchingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        form.setValue("latitude", latitude);
+        form.setValue("longitude", longitude);
+
+        try {
+          // Using Nominatim for reverse geocoding
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await response.json();
+          if (data.display_name) {
+            form.setValue("address", data.display_name);
+            toast({ title: "Location Detected", description: "Address field has been updated." });
+          } else {
+            throw new Error("Could not find address.");
+          }
+        } catch (error) {
+          toast({ variant: "destructive", title: "Could not fetch address.", description: "Please enter it manually." });
+        } finally {
+          setIsFetchingLocation(false);
+        }
+      },
+      (error) => {
+        toast({ variant: "destructive", title: "Unable to retrieve your location.", description: error.message });
+        setIsFetchingLocation(false);
+      }
+    );
+  };
+
+
   const onSubmit = async (values: ReportFormValues) => {
     if (!user || !profile) {
       toast({ variant: "destructive", title: "You must be logged in to report an issue." });
       return;
     }
+
+    if(!values.latitude || !values.longitude){
+        toast({ variant: "destructive", title: "Location is required", description: "Please detect your location or enter an address." });
+        return;
+    }
+
     const result = await createComplaint({
       ...values,
       photoDataUri,
@@ -197,11 +245,17 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Location / Address</FormLabel>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <FormControl>
-                          <Input className="pl-10" placeholder="e.g., Near 123 Main St, opposite the park" {...field} />
-                        </FormControl>
+                      <div className="flex gap-2">
+                        <div className="relative flex-grow">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <FormControl>
+                            <Input className="pl-10" placeholder="e.g., Near 123 Main St, opposite the park" {...field} />
+                            </FormControl>
+                        </div>
+                        <Button type="button" variant="outline" size="icon" onClick={handleLocationDetect} disabled={isFetchingLocation}>
+                            {isFetchingLocation ? <Loader2 className="animate-spin" /> : <LocateFixed />}
+                            <span className="sr-only">Detect Location</span>
+                        </Button>
                       </div>
                       <FormMessage />
                     </FormItem>

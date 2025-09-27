@@ -36,6 +36,8 @@ const reportSchema = z.object({
   photoDataUri: z.string().optional(),
   userId: z.string(),
   userName: z.string(),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 });
 
 export async function createComplaint(values: z.infer<typeof reportSchema>) {
@@ -89,8 +91,8 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
       title: values.title,
       description: values.description,
       location: {
-        lat: Math.random() * 180 - 90, // Mock latitude
-        long: Math.random() * 360 - 180, // Mock longitude
+        lat: values.latitude || 0,
+        long: values.longitude || 0,
         address: values.address,
       },
       category: category,
@@ -102,11 +104,11 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     const complaintRef = await addDoc(collection(db, "complaints"), complaintData);
 
     // 4. AI Duplicate Detection if photo exists and key is present
-    if (values.photoDataUri && hasGeminiKey) {
+    if (values.photoDataUri && hasGeminiKey && values.latitude && values.longitude) {
       const duplicateResult = await detectDuplicateIssue({
         photoDataUri: values.photoDataUri,
-        latitude: complaintData.location.lat,
-        longitude: complaintData.location.long,
+        latitude: values.latitude,
+        longitude: values.longitude,
         complaintId: complaintRef.id,
       });
 
