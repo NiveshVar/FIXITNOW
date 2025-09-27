@@ -7,12 +7,12 @@ import { getStorage } from "firebase/storage";
 // These are placeholder values and will not work.
 // For production, use environment variables to store your Firebase config.
 const firebaseConfig: FirebaseOptions = {
-  apiKey: "AIzaSyBEOTbJGZasNNBUSldkYLqAMQ5hWKm2ORE",
-  authDomain: "fixit-5cb48.firebaseapp.com",
-  projectId: "fixit-5cb48",
-  storageBucket: "fixit-5cb48.firebasestorage.app",
-  messagingSenderId: "698646198537",
-  appId: "1:698646198537:web:4ba4d09afc33979fe87bd8"
+  apiKey: "AIzaSyDFG345345k_9_o1353sdfsdf-gqexxx",
+  authDomain: "fir-studio-demos-1.firebaseapp.com",
+  projectId: "fir-studio-demos-1",
+  storageBucket: "fir-studio-demos-1.appspot.com",
+  messagingSenderId: "962534509423",
+  appId: "1:962534509423:web:f395a565860ol11b183a6b",
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
