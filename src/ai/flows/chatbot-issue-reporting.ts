@@ -31,7 +31,13 @@ const chatbotIssueReportingPrompt = ai.definePrompt({
   name: 'chatbotIssueReportingPrompt',
   input: {schema: ChatbotIssueReportingInputSchema},
   output: {schema: ChatbotIssueReportingOutputSchema},
-  prompt: `You are a chatbot designed to help users report issues in their community. Extract the issue category, location description, and a detailed description from the user input. The issue category should be one of the following: pothole, tree fall, garbage, stray dog. Provide the location as a readable description.
+  prompt: `You are a chatbot designed to help users report issues in their community. Extract the issue category, location description, and a detailed description from the user input.
+
+The issue category should be one of the following: pothole, tree fall, garbage, stray dog. If the category is not clear from the input, default to 'other'.
+
+Provide the location as a readable description. If the location is not mentioned, respond with "N/A".
+
+Provide a detailed description of the issue. If the description is not clear, use the original user input as the description.
 
 User Input: {{{userInput}}}`,
 });
