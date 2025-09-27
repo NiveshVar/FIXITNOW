@@ -10,7 +10,7 @@ const firebaseConfig: FirebaseOptions = {
   apiKey: "AIzaSyBEOTbJGZasNNBUSldkYLqAMQ5hWKm2ORE",
   authDomain: "fixit-5cb48.firebaseapp.com",
   projectId: "fixit-5cb48",
-  storageBucket: "fixit-5cb48.appspot.com",
+  storageBucket: "fixit-5cb48.firebasestorage.app",
   messagingSenderId: "698646198537",
   appId: "1:698646198537:web:4ba4d09afc33979fe87bd8"
 };
