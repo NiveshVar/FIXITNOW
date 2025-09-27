@@ -116,7 +116,11 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
           }
         } catch (e: any) {
           console.error("AI Classification failed in component:", e.message);
-          toast({ variant: "destructive", title: "AI Classification Failed" });
+          if (e.message?.includes("503")) {
+             toast({ variant: "destructive", title: "AI Service Unavailable", description: "Please select a category manually." });
+          } else {
+            toast({ variant: "destructive", title: "AI Classification Failed" });
+          }
         } finally {
           setIsClassifying(false);
         }
