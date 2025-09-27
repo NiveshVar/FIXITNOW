@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -8,6 +8,7 @@ import {
   ConfirmationResult,
   RecaptchaVerifier,
   signInWithPhoneNumber,
+  getRedirectResult,
 } from "firebase/auth";
 
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,6 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { Separator } from "./ui/separator";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -106,6 +106,29 @@ export default function AuthPage() {
     defaultValues: { otp: "" },
   });
 
+   useEffect(() => {
+    // Check for redirect result from Google
+    const checkRedirect = async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result) {
+          toast({
+            title: "Sign In Successful",
+            description: `Welcome back, ${result.user.displayName}!`,
+          });
+        }
+      } catch (error: any) {
+        // Handle specific errors if necessary, e.g., auth/account-exists-with-different-credential
+        toast({
+          variant: "destructive",
+          title: "Google Sign In Failed",
+          description: error.message,
+        });
+      }
+    };
+    checkRedirect();
+  }, [toast]);
+
   const setupRecaptcha = () => {
     if (!window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(
@@ -128,6 +151,11 @@ export default function AuthPage() {
         variant: "destructive",
         title: "Login Failed",
         description: result.error,
+      });
+    } else {
+       toast({
+        title: "Login Successful",
+        description: "Welcome back!",
       });
     }
   };
@@ -175,10 +203,11 @@ export default function AuthPage() {
         description: `An OTP has been sent to ${values.phone}.`,
       });
     } catch (error: any) {
+      console.error(error);
       toast({
         variant: "destructive",
         title: "Failed to send OTP",
-        description: error.message,
+        description: "Firebase: Error (auth/billing-not-enabled). Please upgrade your Firebase project to a paid plan (Blaze) to use this feature.",
       });
     }
   };
