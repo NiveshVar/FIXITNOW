@@ -34,7 +34,6 @@ import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
 import { loginWithEmailOrPhone } from "@/app/actions";
 import { AuthContext } from "@/context/auth-provider";
-import { useRouter } from "next/navigation";
 
 const loginSchema = z.object({
   emailOrPhone: z.string().min(1, { message: "This field is required." }),
@@ -55,7 +54,6 @@ const signupSchema = z.object({
 export default function AuthPage() {
   const { toast } = useToast();
   const authContext = React.useContext(AuthContext);
-  const router = useRouter();
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {

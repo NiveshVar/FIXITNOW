@@ -28,7 +28,6 @@ import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
 import { adminLogin } from "@/app/actions";
 import { AuthContext } from "@/context/auth-provider";
-import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
 
 const loginSchema = z.object({
@@ -41,7 +40,6 @@ const loginSchema = z.object({
 export default function AdminLoginPage() {
   const { toast } = useToast();
   const authContext = React.useContext(AuthContext);
-  const router = useRouter();
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
