@@ -9,7 +9,7 @@ import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
 import React from "react";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminDashboardLayout({ children }: { children: React.ReactNode }) {
     const { profile, loading } = useAuth();
     
     if (loading) {
