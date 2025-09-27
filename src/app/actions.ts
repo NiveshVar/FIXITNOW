@@ -4,8 +4,6 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
-  GoogleAuthProvider,
-  signInWithRedirect,
 } from "firebase/auth";
 import {
   addDoc,
@@ -69,18 +67,6 @@ export async function handleSignUp(values: z.infer<typeof signupSchema>) {
   }
 }
 
-export async function handleGoogleSignIn() {
-  const provider = new GoogleAuthProvider();
-  try {
-    // Using signInWithRedirect is more robust in different environments
-    await signInWithRedirect(auth, provider);
-    // The user will be redirected to Google's sign-in page.
-    // The result is handled in the AuthProvider's useEffect.
-    return { success: true };
-  } catch (error: any) {
-     return { error: error.message };
-  }
-}
 
 export async function handleLogout() {
   await signOut(auth);

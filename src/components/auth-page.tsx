@@ -1,15 +1,9 @@
 "use client";
 import * as React from "react";
-import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import {
-  ConfirmationResult,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  getRedirectResult,
-} from "firebase/auth";
+
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +16,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -31,16 +24,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { handleLogin, handleSignUp, handleGoogleSignIn } from "@/app/actions";
+import { handleLogin, handleSignUp } from "@/app/actions";
 import { Logo } from "./icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
-import { auth } from "@/lib/firebase";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -57,34 +44,8 @@ const signupSchema = z.object({
     .min(6, { message: "Password must be at least 6 characters." }),
 });
 
-const phoneSchema = z.object({
-  phone: z.string().refine( (phone) => /^\+[1-9]\d{1,14}$/.test(phone), {
-    message: "Invalid phone number. Please use E.164 format (e.g., +14155552671).",
-  }),
-});
-
-const otpSchema = z.object({
-  otp: z.string().length(6, { message: "OTP must be 6 digits." }),
-});
-
-const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg
-    role="img"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <title>Google</title>
-    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.62 1.9-5.07 1.9-4.75 0-8.53-3.8-8.53-8.53s3.8-8.53 8.53-8.53c2.47 0 4.5.95 6.13 2.5l2.73-2.73C19.49 1.12 16.38 0 12.48 0 5.88 0 .04 5.88.04 12.48s5.84 12.48 12.44 12.48c3.55 0 6.42-1.25 8.57-3.48 2.3-2.3 3.3-5.38 3.3-9.15 0-.8-.1-1.48-.25-2.15z" />
-  </svg>
-);
-
-
 export default function AuthPage() {
   const { toast } = useToast();
-  const [confirmationResult, setConfirmationResult] =
-    useState<ConfirmationResult | null>(null);
-  const [isOtpSent, setIsOtpSent] = useState(false);
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -96,53 +57,6 @@ export default function AuthPage() {
     defaultValues: { name: "", email: "", password: "" },
   });
 
-  const phoneForm = useForm<z.infer<typeof phoneSchema>>({
-    resolver: zodResolver(phoneSchema),
-    defaultValues: { phone: "+" },
-  });
-
-  const otpForm = useForm<z.infer<typeof otpSchema>>({
-    resolver: zodResolver(otpSchema),
-    defaultValues: { otp: "" },
-  });
-
-   useEffect(() => {
-    // Check for redirect result from Google
-    const checkRedirect = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          toast({
-            title: "Sign In Successful",
-            description: `Welcome back, ${result.user.displayName}!`,
-          });
-        }
-      } catch (error: any) {
-        // Handle specific errors if necessary, e.g., auth/account-exists-with-different-credential
-        toast({
-          variant: "destructive",
-          title: "Google Sign In Failed",
-          description: error.message,
-        });
-      }
-    };
-    checkRedirect();
-  }, [toast]);
-
-  const setupRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(
-        auth,
-        "recaptcha-container",
-        {
-          size: "invisible",
-          callback: () => {
-            // reCAPTCHA solved, allow sign in
-          },
-        }
-      );
-    }
-  };
 
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
     const result = await handleLogin(values);
@@ -173,67 +87,13 @@ export default function AuthPage() {
         title: "Sign Up Successful",
         description: "You can now log in with your credentials.",
       });
-    }
-  };
-
-  const onGoogleSignInClick = async () => {
-    const result = await handleGoogleSignIn();
-    if (result.error) {
-      toast({
-        variant: "destructive",
-        title: "Google Sign In Failed",
-        description: result.error,
-      });
-    }
-  };
-
-  const onPhoneSubmit = async (values: z.infer<typeof phoneSchema>) => {
-    try {
-      setupRecaptcha();
-      const appVerifier = window.recaptchaVerifier;
-      const result = await signInWithPhoneNumber(
-        auth,
-        values.phone,
-        appVerifier
-      );
-      setConfirmationResult(result);
-      setIsOtpSent(true);
-      toast({
-        title: "OTP Sent",
-        description: `An OTP has been sent to ${values.phone}.`,
-      });
-    } catch (error: any) {
-      console.error(error);
-      toast({
-        variant: "destructive",
-        title: "Failed to send OTP",
-        description: "Firebase: Error (auth/billing-not-enabled). Please upgrade your Firebase project to a paid plan (Blaze) to use this feature.",
-      });
-    }
-  };
-
-  const onOtpSubmit = async (values: z.infer<typeof otpSchema>) => {
-    if (!confirmationResult) return;
-    try {
-      await confirmationResult.confirm(values.otp);
-      // User signed in successfully.
-      // The onAuthStateChanged listener in AuthProvider will handle the rest.
-      toast({
-        title: "Login Successful",
-        description: "You have been logged in.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid OTP or an error occurred.",
-      });
+      // Reset form and potentially switch to login tab
+      signupForm.reset();
     }
   };
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:min-h-screen">
-      <div id="recaptcha-container"></div>
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
@@ -246,10 +106,9 @@ export default function AuthPage() {
             </p>
           </div>
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Email</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              <TabsTrigger value="phone">Phone</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
               <Card className="border-0 shadow-none">
@@ -298,24 +157,10 @@ export default function AuthPage() {
                       >
                         {loginForm.formState.isSubmitting
                           ? "Logging in..."
-                          : "Login with Email"}
+                          : "Login"}
                       </Button>
                     </form>
                   </Form>
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground">
-                        Or continue with
-                      </span>
-                    </div>
-                  </div>
-                  <Button variant="outline" className="w-full" onClick={onGoogleSignInClick}>
-                      <GoogleIcon className="mr-2 h-5 w-5" />
-                      Sign in with Google
-                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -384,116 +229,6 @@ export default function AuthPage() {
                     </form>
                   </Form>
                 </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="phone">
-              <Card className="border-0 shadow-none">
-                {!isOtpSent ? (
-                  <>
-                    <CardHeader>
-                      <CardTitle className="text-2xl">
-                        Sign In with Phone
-                      </CardTitle>
-                      <CardDescription>
-                        Enter your phone number to receive an OTP. This requires a paid Firebase plan.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Form {...phoneForm}>
-                        <form
-                          onSubmit={phoneForm.handleSubmit(onPhoneSubmit)}
-                          className="space-y-4"
-                        >
-                          <FormField
-                            control={phoneForm.control}
-                            name="phone"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Phone Number</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="+18005551234"
-                                    {...field}
-                                  />
-                                </FormControl>
-                                 <FormDescription>
-                                  Must be in E.164 format (e.g., +14155552671)
-                                </FormDescription>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button
-                            type="submit"
-                            className="w-full"
-                            disabled={phoneForm.formState.isSubmitting}
-                          >
-                            {phoneForm.formState.isSubmitting
-                              ? "Sending OTP..."
-                              : "Send OTP"}
-                          </Button>
-                        </form>
-                      </Form>
-                    </CardContent>
-                  </>
-                ) : (
-                  <>
-                    <CardHeader>
-                      <CardTitle className="text-2xl">Enter OTP</CardTitle>
-                      <CardDescription>
-                        Enter the 6-digit code sent to your phone.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Form {...otpForm}>
-                        <form
-                          onSubmit={otpForm.handleSubmit(onOtpSubmit)}
-                          className="space-y-4"
-                        >
-                          <FormField
-                            control={otpForm.control}
-                            name="otp"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>One-Time Password</FormLabel>
-                                <FormControl>
-                                  <InputOTP maxLength={6} {...field}>
-                                    <InputOTPGroup>
-                                      <InputOTPSlot index={0} />
-                                      <InputOTPSlot index={1} />
-                                      <InputOTPSlot index={2} />
-                                      <InputOTPSlot index={3} />
-                                      <InputOTPSlot index={4} />
-                                      <InputOTPSlot index={5} />
-                                    </InputOTPGroup>
-                                  </InputOTP>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button
-                            type="submit"
-                            className="w-full"
-                            disabled={otpForm.formState.isSubmitting}
-                          >
-                            {otpForm.formState.isSubmitting
-                              ? "Verifying..."
-                              : "Verify OTP"}
-                          </Button>
-                        </form>
-                      </Form>
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="mt-4 px-0"
-                        onClick={() => setIsOtpSent(false)}
-                      >
-                        Back to phone number entry
-                      </Button>
-                    </CardContent>
-                  </>
-                )}
               </Card>
             </TabsContent>
           </Tabs>
