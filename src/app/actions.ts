@@ -31,6 +31,7 @@ const reportSchema = z.object({
   photoDataUri: z.string().optional(),
   userId: z.string(),
   userName: z.string(),
+  userPhone: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
 });
@@ -88,6 +89,7 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     const complaintData = {
       userId: values.userId,
       userName: values.userName,
+      userPhone: values.userPhone,
       title: values.title,
       description: values.description,
       location: {
@@ -197,8 +199,9 @@ export async function findOrCreateUser(
   if (querySnapshot.empty) {
     await setDoc(userRef, {
       uid: uid,
-      name: "User",
-      email: phone,
+      name: "User", // Default name for phone users
+      email: phone, // Using phone as a stand-in for email
+      phone: phone,
       role: "user",
     });
   }

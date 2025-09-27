@@ -135,6 +135,7 @@ export function ReportIssueForm() {
       photoDataUri,
       userId: user.uid,
       userName: profile.name,
+      userPhone: profile.phone,
     });
 
     if (result.error) {

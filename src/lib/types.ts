@@ -7,6 +7,7 @@ export type UserProfile = {
   name: string;
   email: string;
   role: UserRole;
+  phone?: string;
 };
 
 export type ComplaintCategory = 'pothole' | 'tree fall' | 'garbage' | 'stray dog' | 'other';
@@ -17,6 +18,7 @@ export type Complaint = {
   id: string;
   userId: string;
   userName: string;
+  userPhone?: string;
   title: string;
   description: string;
   location: {
