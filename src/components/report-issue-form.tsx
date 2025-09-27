@@ -196,7 +196,7 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                     <FormItem>
                       <FormLabel>Issue Title</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., Large pothole on Main St" {...field} />
+                        <Input {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -210,7 +210,6 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                       <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Provide details about the issue, its size, and impact."
                           className="resize-none"
                           rows={5}
                           {...field}
@@ -230,7 +229,7 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                         <div className="relative flex-grow">
                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <FormControl>
-                            <Input className="pl-10" placeholder="e.g., Near 123 Main St, opposite the park" {...field} />
+                            <Input className="pl-10" {...field} />
                             </FormControl>
                         </div>
                         <Button type="button" variant="outline" size="icon" onClick={handleLocationDetect} disabled={isFetchingLocation}>
@@ -253,7 +252,7 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="pl-10">
-                                <SelectValue placeholder="Select an issue category" />
+                                <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
@@ -309,10 +308,6 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                         </div>
                     )}
                 </Card>
-                 <div className="flex items-center text-sm text-muted-foreground">
-                    <Sparkles className="mr-2 h-4 w-4 text-primary" />
-                    AI features are applied on the server after submission.
-                </div>
               </div>
             </div>
             <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting}>
