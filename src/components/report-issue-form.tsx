@@ -114,7 +114,8 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
               description: `We've categorized this issue as: ${result.category}.`,
             });
           }
-        } catch (e) {
+        } catch (e: any) {
+          console.error("AI Classification failed in component:", e.message);
           toast({ variant: "destructive", title: "AI Classification Failed" });
         } finally {
           setIsClassifying(false);

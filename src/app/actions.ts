@@ -47,9 +47,14 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     // 1. Initial AI Classification if photo exists and key is present
     let category = values.category;
     if (values.photoDataUri && category === "other" && hasGeminiKey) {
-      const classificationResult = await classifyIssue({ photoDataUri: values.photoDataUri });
-      if (classificationResult.category) {
-        category = classificationResult.category;
+      try {
+        const classificationResult = await classifyIssue({ photoDataUri: values.photoDataUri });
+        if (classificationResult.category) {
+          category = classificationResult.category;
+        }
+      } catch (error: any) {
+        // Don't block submission, just log the error.
+        console.error("AI classification failed:", error.message);
       }
     }
 
@@ -105,18 +110,23 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
 
     // 4. AI Duplicate Detection if photo exists and key is present
     if (values.photoDataUri && hasGeminiKey && values.latitude && values.longitude) {
-      const duplicateResult = await detectDuplicateIssue({
-        photoDataUri: values.photoDataUri,
-        latitude: values.latitude,
-        longitude: values.longitude,
-        complaintId: complaintRef.id,
-      });
-
-      if (duplicateResult.isDuplicate && duplicateResult.duplicateComplaintId) {
-        await updateDoc(complaintRef, {
-          duplicateOf: duplicateResult.duplicateComplaintId,
-          status: "Resolved"
+      try {
+        const duplicateResult = await detectDuplicateIssue({
+          photoDataUri: values.photoDataUri,
+          latitude: values.latitude,
+          longitude: values.longitude,
+          complaintId: complaintRef.id,
         });
+
+        if (duplicateResult.isDuplicate && duplicateResult.duplicateComplaintId) {
+          await updateDoc(complaintRef, {
+            duplicateOf: duplicateResult.duplicateComplaintId,
+            status: "Resolved"
+          });
+        }
+      } catch (error: any) {
+         // Don't block submission, just log the error.
+        console.error("AI duplicate detection failed:", error.message);
       }
     }
 
