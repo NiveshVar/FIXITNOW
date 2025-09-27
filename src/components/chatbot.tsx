@@ -38,7 +38,7 @@ export default function Chatbot({ onSubmit }: ChatbotProps) {
       const result = await chatbotIssueReporting({ userInput: input });
       // Construct the full prefill object
       const prefillData: ReportPrefill = {
-        title: "Issue reported by chatbot",
+        title: "Issue reported via chatbot", // Provide a default title
         description: result.description,
         locationDescription: "", // User will fill this
         category: "other", // User will fill this
@@ -73,7 +73,7 @@ export default function Chatbot({ onSubmit }: ChatbotProps) {
           <SheetHeader>
             <SheetTitle>Chatbot Reporting</SheetTitle>
             <SheetDescription>
-              Describe the issue you see in plain language, and our AI will do the rest.
+              Describe the issue you see in plain language, and our AI will help pre-fill the form.
               For example: &quot;There is a huge pothole on Elm street near the library, it caused a flat tire.&quot;
             </SheetDescription>
           </SheetHeader>
