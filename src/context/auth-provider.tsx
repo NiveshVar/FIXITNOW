@@ -33,13 +33,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setProfile(profile);
   }, []);
 
-  const fetchUserProfile = useCallback(async (userToFetch: User | null) => {
-    if (!userToFetch) {
-      setProfile(null);
-      setLoading(false);
-      return;
-    }
-    
+  const fetchUserProfile = useCallback(async (userToFetch: User) => {
     try {
       const userDocRef = doc(db, "users", userToFetch.uid);
       const userDoc = await getDoc(userDocRef);
@@ -52,7 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Failed to fetch user profile:", error);
       setProfile(null);
     } finally {
-       setLoading(false);
+      setLoading(false);
     }
   }, []);
 
@@ -60,28 +54,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     const currentUser = auth.currentUser;
     setUser(currentUser);
-    await fetchUserProfile(currentUser);
+    if (currentUser) {
+      await fetchUserProfile(currentUser);
+    } else {
+      setProfile(null);
+      setLoading(false);
+    }
   }, [fetchUserProfile]);
 
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (userState) => {
+    const unsubscribe = onAuthStateChanged(auth, (userState) => {
+      setLoading(true);
       setUser(userState);
       if (userState) {
-        try {
-            const userDocRef = doc(db, "users", userState.uid);
-            const userDoc = await getDoc(userDocRef);
-            if (userDoc.exists()) {
-                setProfile(userDoc.data() as UserProfile);
-            } else {
-                setProfile(null);
-            }
-        } catch (error) {
-            console.error("Error fetching user profile:", error);
-            setProfile(null);
-        } finally {
-            setLoading(false);
-        }
+        fetchUserProfile(userState);
       } else {
         setProfile(null);
         setLoading(false);
@@ -89,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [fetchUserProfile]);
 
 
   const value = { user, profile, loading, refreshAuth, setAuth };
