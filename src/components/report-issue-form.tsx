@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -21,7 +21,7 @@ import { PawPrintIcon } from "@/components/icons/logo";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,7 +29,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { createComplaint } from "@/app/actions";
 import { fileToDataUri } from "@/lib/utils";
-import type { ComplaintCategory, ReportPrefill } from "@/lib/types";
+import type { ComplaintCategory } from "@/lib/types";
 
 const reportSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters." }),
@@ -51,12 +51,8 @@ const categoryIcons: Record<ComplaintCategory, React.ElementType> = {
   other: HelpCircle,
 };
 
-interface ReportIssueFormProps {
-  prefillData: ReportPrefill | null;
-  onClearPrefill: () => void;
-}
 
-export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueFormProps) {
+export function ReportIssueForm() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const [preview, setPreview] = useState<string | null>(null);
@@ -73,23 +69,6 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
       category: "other",
     },
   });
-
-  useEffect(() => {
-    if (prefillData) {
-      form.setValue("title", prefillData.title);
-      form.setValue("description", prefillData.description);
-      form.setValue("address", prefillData.locationDescription);
-      if (["pothole", "tree fall", "garbage", "stray dog"].includes(prefillData.category)) {
-        form.setValue("category", prefillData.category as ComplaintCategory);
-      }
-      toast({
-        title: "Information Pre-filled",
-        description: "The chatbot has filled the form for you. Please review and submit.",
-      });
-      onClearPrefill();
-    }
-  }, [prefillData, form, toast, onClearPrefill]);
-
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -262,9 +241,6 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                             </SelectContent>
                           </Select>
                        </div>
-                       <FormDescription>
-                          Select 'Other' and upload an image for automatic classification.
-                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

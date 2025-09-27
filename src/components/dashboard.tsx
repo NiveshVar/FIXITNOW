@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,18 +7,10 @@ import { ReportIssueForm } from "@/components/report-issue-form";
 import MyIssues from "@/components/my-issues";
 import { useAuth } from "@/hooks/use-auth";
 import AllIssuesAdmin from "@/components/all-issues-admin";
-import Chatbot from "@/components/chatbot";
-import type { ReportPrefill } from "@/lib/types";
 
 export default function Dashboard() {
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState("report");
-  const [chatbotData, setChatbotData] = useState<ReportPrefill | null>(null);
-
-  const handleChatbotSubmit = (data: ReportPrefill) => {
-    setChatbotData(data);
-    setActiveTab("report");
-  };
 
   return (
     <main className="flex-1 p-4 md:p-6 lg:p-8">
@@ -29,7 +22,7 @@ export default function Dashboard() {
             {profile?.role === 'admin' && <TabsTrigger value="admin">Admin Dashboard</TabsTrigger>}
           </TabsList>
           <TabsContent value="report">
-            <ReportIssueForm prefillData={chatbotData} onClearPrefill={() => setChatbotData(null)} />
+            <ReportIssueForm />
           </TabsContent>
           <TabsContent value="track">
             <MyIssues />
@@ -41,7 +34,6 @@ export default function Dashboard() {
           )}
         </Tabs>
       </div>
-      <Chatbot onSubmit={handleChatbotSubmit} />
     </main>
   );
 }
