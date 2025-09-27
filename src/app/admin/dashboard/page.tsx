@@ -4,23 +4,17 @@
 import AllIssuesAdmin from "@/components/all-issues-admin";
 import AdminHeader from "@/components/admin-header";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Logo } from "@/components/icons/logo";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ShieldAlert } from "lucide-react";
 
 export default function AdminDashboardPage() {
     const { profile, loading } = useAuth();
-    const router = useRouter();
-
-    useEffect(() => {
-        if (!loading && (!profile || profile.role !== 'admin')) {
-            router.push('/admin/login');
-        }
-    }, [profile, loading, router]);
-
-
-    if (loading || !profile || profile.role !== 'admin') {
+    
+    // While authentication is in progress, show a loading state.
+    if (loading) {
          return (
           <div className="flex flex-col min-h-screen">
             <header className="flex items-center h-16 px-4 border-b shrink-0 md:px-6">
@@ -40,6 +34,26 @@ export default function AdminDashboardPage() {
         );
     }
 
+    // After loading, if there's no profile or the user is not an admin, show access denied.
+    if (!profile || profile.role !== 'admin') {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center p-4">
+            <ShieldAlert className="h-16 w-16 text-destructive mb-4" />
+            <h1 className="text-3xl font-bold">Access Denied</h1>
+            <p className="text-muted-foreground mt-2">You do not have permission to view this page.</p>
+            <div className="mt-6 flex gap-4">
+              <Button asChild>
+                <Link href="/">Go to Homepage</Link>
+              </Button>
+               <Button variant="outline" asChild>
+                <Link href="/admin/login">Admin Login</Link>
+              </Button>
+            </div>
+        </div>
+      )
+    }
+
+    // If loading is complete and the user is an admin, show the dashboard.
     return (
         <div className="min-h-screen bg-background">
             <AdminHeader />
