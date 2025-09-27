@@ -30,7 +30,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { createComplaint } from "@/app/actions";
 import { fileToDataUri } from "@/lib/utils";
-import { classifyIssue } from "@/ai/flows/image-classification-for-issue";
 import { ChatbotIssueReportingOutput } from "@/ai/flows/chatbot-issue-reporting";
 import type { ComplaintCategory } from "@/lib/types";
 
@@ -64,7 +63,6 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
   const { toast } = useToast();
   const [preview, setPreview] = useState<string | null>(null);
   const [photoDataUri, setPhotoDataUri] = useState<string | undefined>(undefined);
-  const [isClassifying, setIsClassifying] = useState(false);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -102,29 +100,6 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
       const uri = await fileToDataUri(file);
       setPreview(uri);
       setPhotoDataUri(uri);
-
-      if (form.getValues("category") === "other") {
-        setIsClassifying(true);
-        try {
-          const result = await classifyIssue({ photoDataUri: uri });
-          if (result.category) {
-            form.setValue("category", result.category);
-            toast({
-              title: "AI Classification Complete",
-              description: `We've categorized this issue as: ${result.category}.`,
-            });
-          }
-        } catch (e: any) {
-          console.error("AI Classification failed in component:", e.message);
-          if (e.message?.includes("503")) {
-             toast({ variant: "destructive", title: "AI Service Unavailable", description: "Please select a category manually." });
-          } else {
-            toast({ variant: "destructive", title: "AI Classification Failed" });
-          }
-        } finally {
-          setIsClassifying(false);
-        }
-      }
     }
   };
 
@@ -286,10 +261,13 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                               <SelectItem value="tree fall">Tree Fall</SelectItem>
                               <SelectItem value="garbage">Garbage</SelectItem>
                               <SelectItem value="stray dog">Stray Dog</SelectItem>
-                              <SelectItem value="other">Other (Classify with AI)</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
                             </SelectContent>
                           </Select>
                        </div>
+                       <FormDescription>
+                          Select 'Other' and upload an image for automatic classification.
+                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -331,13 +309,10 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
                         </div>
                     )}
                 </Card>
-                 {isClassifying && (
-                    <div className="flex items-center text-sm text-muted-foreground">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        <Sparkles className="mr-2 h-4 w-4 text-primary" />
-                        AI is classifying the image...
-                    </div>
-                 )}
+                 <div className="flex items-center text-sm text-muted-foreground">
+                    <Sparkles className="mr-2 h-4 w-4 text-primary" />
+                    AI features are applied on the server after submission.
+                </div>
               </div>
             </div>
             <Button type="submit" className="w-full md:w-auto" disabled={form.formState.isSubmitting}>
@@ -353,3 +328,5 @@ export function ReportIssueForm({ prefillData, onClearPrefill }: ReportIssueForm
     </Card>
   );
 }
+
+    
