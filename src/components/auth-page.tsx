@@ -33,7 +33,6 @@ import { Logo } from "./icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
 import { loginWithEmailOrPhone } from "@/app/actions";
-import { AuthContext } from "@/context/auth-provider";
 
 const loginSchema = z.object({
   emailOrPhone: z.string().min(1, { message: "This field is required." }),
@@ -53,7 +52,6 @@ const signupSchema = z.object({
 
 export default function AuthPage() {
   const { toast } = useToast();
-  const authContext = React.useContext(AuthContext);
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
@@ -72,12 +70,11 @@ export default function AuthPage() {
 
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
     const result = await loginWithEmailOrPhone(values);
-    if (result.success && result.profile) {
+    if (result.success) {
         toast({
             title: "Login Successful",
             description: "Welcome back!",
         });
-        authContext.setAuth(auth.currentUser, result.profile);
         window.location.href = "/";
     } else {
       toast({

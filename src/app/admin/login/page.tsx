@@ -27,8 +27,6 @@ import { Logo } from "@/components/icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
 import { adminLogin } from "@/app/actions";
-import { AuthContext } from "@/context/auth-provider";
-import { auth } from "@/lib/firebase";
 
 const loginSchema = z.object({
   emailOrPhone: z.string().min(1, { message: "This field is required." }),
@@ -39,7 +37,6 @@ const loginSchema = z.object({
 
 export default function AdminLoginPage() {
   const { toast } = useToast();
-  const authContext = React.useContext(AuthContext);
   const [isClient, setIsClient] = React.useState(false);
 
   React.useEffect(() => {
@@ -55,13 +52,11 @@ export default function AdminLoginPage() {
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
     const result = await adminLogin(values);
     
-    if (result.success && result.profile) {
+    if (result.success) {
       toast({
         title: "Admin Login Successful",
         description: "Redirecting to the Admin Dashboard...",
       });
-      // Set auth state and redirect
-      authContext.setAuth(auth.currentUser, result.profile);
       window.location.href = "/admin/dashboard";
     } else {
       toast({
