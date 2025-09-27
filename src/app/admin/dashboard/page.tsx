@@ -13,7 +13,6 @@ import { ShieldAlert } from "lucide-react";
 export default function AdminDashboardPage() {
     const { profile, loading } = useAuth();
     
-    // While authentication is in progress, show a loading state.
     if (loading) {
          return (
           <div className="flex flex-col min-h-screen">
@@ -34,7 +33,6 @@ export default function AdminDashboardPage() {
         );
     }
 
-    // After loading, if there's no profile or the user is not an admin, show access denied.
     if (!profile || profile.role !== 'admin') {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center p-4">
@@ -53,7 +51,6 @@ export default function AdminDashboardPage() {
       )
     }
 
-    // If loading is complete and the user is an admin, show the dashboard.
     return (
         <div className="min-h-screen bg-background">
             <AdminHeader />

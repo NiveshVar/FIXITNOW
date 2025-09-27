@@ -56,7 +56,6 @@ export default function AdminLoginPage() {
         title: "Admin Login Successful",
         description: "Redirecting to the Admin Dashboard...",
       });
-      // Use window.location.href to force a full page reload, ensuring auth state is updated.
       window.location.href = "/admin/dashboard";
     } else {
       toast({

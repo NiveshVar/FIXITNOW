@@ -155,13 +155,10 @@ export async function adminLogin(values: z.infer<typeof adminLoginSchema>) {
       }
     }
     
-    // If we reach here, the user is not an admin or has no profile.
-    // Sign them out to be safe and return an error.
     await auth.signOut();
     return { success: false, error: "You are not authorized to access this page." };
 
   } catch (error: any) {
-    // Handle incorrect password, user not found in Auth, etc.
     return { success: false, error: "Invalid email or password." };
   }
 }
