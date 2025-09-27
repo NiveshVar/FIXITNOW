@@ -8,12 +8,10 @@ import { Logo } from "./icons/logo";
 import { useToast } from "@/hooks/use-toast";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation";
 
 export default function AdminHeader() {
   const { profile } = useAuth();
   const { toast } = useToast();
-  const router = useRouter();
 
   const onLogout = async () => {
     try {
@@ -22,7 +20,7 @@ export default function AdminHeader() {
         title: "Logged Out",
         description: "You have been successfully logged out.",
       });
-      router.push("/admin/login");
+      window.location.href = "/admin/login";
     } catch (error) {
         toast({
             variant: "destructive",
