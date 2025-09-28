@@ -1,13 +1,14 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Complaint } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet.heat';
+import L from 'leaflet';
 import type { LatLngExpression } from 'leaflet';
 import { Skeleton } from './ui/skeleton';
 
@@ -23,6 +24,10 @@ declare module 'leaflet' {
   }
 
   function heatLayer(latlngs: LatLngExpression[], options?: HeatLayerOptions): any;
+  
+  interface Map {
+    _hotspots?: any;
+  }
 }
 
 
@@ -31,20 +36,25 @@ const HeatLayerComponent = ({ points }: { points: [number, number, number][] }) 
 
   useEffect(() => {
     if (points.length > 0) {
-      const heat = (L as any).heatLayer(points, {
+      const heat = L.heatLayer(points, {
         radius: 25,
         blur: 15,
         maxZoom: 18,
         gradient: { 0.4: 'blue', 0.65: 'lime', 1: 'red' }
       }).addTo(map);
       
+      // Store the layer on the map instance to be able to remove it later
+      map._hotspots = heat;
+
       const validPoints = points.map(p => L.latLng(p[0], p[1]));
       if (validPoints.length > 0) {
         map.fitBounds(L.latLngBounds(validPoints), { padding: [50, 50] });
       }
 
       return () => {
-        map.removeLayer(heat);
+        if (map._hotspots) {
+            map.removeLayer(map._hotspots);
+        }
       };
     }
   }, [points, map]);
@@ -74,7 +84,7 @@ const HeatmapDynamic = () => {
     }
 
     const unsubscribe = onSnapshot(complaintsQuery, (snapshot) => {
-      const fetchedComplaints = snapshot.docs.map(doc => doc.data() as Complaint);
+      const fetchedComplaints = snapshot.docs.map(doc => ({...doc.data(), id: doc.id }) as Complaint);
       setComplaints(fetchedComplaints);
       setLoading(false);
     });
@@ -91,6 +101,10 @@ const HeatmapDynamic = () => {
 
   if (loading) {
       return <Skeleton className="h-full w-full" />;
+  }
+  
+  if (!profile) {
+    return <div className="text-center p-8">You are not authorized to view this content.</div>
   }
 
   return (
