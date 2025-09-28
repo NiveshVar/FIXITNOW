@@ -65,17 +65,13 @@ export default function AllIssuesAdmin() {
     
     let complaintsQuery;
     if (profile.role === 'super-admin') {
-      // Super admin sees all complaints
       complaintsQuery = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
     } else if (profile.role === 'admin' && profile.district) {
-      // District admin sees complaints for their district and unassigned ones as a fallback
       complaintsQuery = query(
         collection(db, "complaints"),
-        where("district", "in", [profile.district, "Unknown"]),
-        orderBy("timestamp", "desc")
+        where("district", "in", [profile.district, "Unknown"])
       );
     } else {
-      // No profile or role, see nothing
       setLoading(false);
       return;
     }
@@ -86,6 +82,12 @@ export default function AllIssuesAdmin() {
       querySnapshot.forEach((doc) => {
         allComplaints.push({ id: doc.id, ...doc.data() } as Complaint);
       });
+      
+      // Sort client-side if we couldn't do it in the query
+      if (profile.role === 'admin') {
+        allComplaints.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+      }
+
       setComplaints(allComplaints);
       setLoading(false);
     });
