@@ -21,6 +21,7 @@ import { detectDuplicateIssue } from "@/ai/flows/duplicate-issue-detection";
 import { revalidatePath } from "next/cache";
 import { ComplaintStatus, UserProfile } from "@/lib/types";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { districtList } from "@/lib/districts";
 
 
 const reportSchema = z.object({
@@ -34,6 +35,16 @@ const reportSchema = z.object({
   latitude: z.number().optional(),
   longitude: z.number().optional(),
 });
+
+function findDistrictInAddress(address: string): string | null {
+    const lowerCaseAddress = address.toLowerCase();
+    for (const district of districtList) {
+        if (lowerCaseAddress.includes(district.toLowerCase())) {
+            return district;
+        }
+    }
+    return null;
+}
 
 export async function createComplaint(values: z.infer<typeof reportSchema>) {
   try {
@@ -84,15 +95,21 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
       }
     }
     
-    // 3. Determine district and coordinates. Prioritize manual address.
+    // 3. Determine district and coordinates.
     let district = 'Unknown';
     let lat = values.latitude || 0;
     let long = values.longitude || 0;
-    let addressSource = values.address; // Use manual address by default
+    let addressSource = values.address;
 
-    // If manual address is provided, use it for forward geocoding.
-    // This will overwrite lat/long from GPS detection.
     if (values.address) {
+        // First, try the user's suggested method: search for a district in the address string.
+        const foundDistrict = findDistrictInAddress(values.address);
+        if (foundDistrict) {
+            district = foundDistrict;
+        }
+
+        // Use forward geocoding to get lat/long for the manual address.
+        // This will overwrite lat/long from GPS detection if a manual address is provided.
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(values.address)}&format=json&addressdetails=1&limit=1`);
             const data = await response.json();
@@ -100,8 +117,10 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
                 const result = data[0];
                 lat = parseFloat(result.lat);
                 long = parseFloat(result.lon);
-                district = result.address?.county || result.address?.state_district || result.address?.city_district || district;
-                // Use the geocoded display name for consistency if needed, or keep manual one. Let's keep the manual one.
+                // If we still haven't found a district, try to get it from the geocoding result as a fallback.
+                if (district === 'Unknown') {
+                   district = result.address?.county || result.address?.state_district || result.address?.city_district || district;
+                }
             }
         } catch (error) {
             console.error("Forward geocoding for manual address failed.", error);
@@ -278,4 +297,5 @@ export async function markNotificationsAsRead(userId: string) {
         return { error: error.message };
     }
 }
+
 
