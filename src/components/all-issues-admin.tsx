@@ -114,11 +114,6 @@ export default function AllIssuesAdmin() {
       cell: ({ row }) => <div className="capitalize">{row.getValue("category")}</div>,
     },
     {
-      accessorKey: "district",
-      header: "District",
-      cell: ({ row }) => <div className="capitalize">{row.getValue("district")}</div>,
-    },
-    {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => <ComplaintStatusBadge status={row.getValue("status")} />,
