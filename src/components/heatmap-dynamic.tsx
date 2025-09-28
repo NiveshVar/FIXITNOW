@@ -1,8 +1,8 @@
 
 'use client';
 
-import 'leaflet.heat';
 import L from 'leaflet';
+import 'leaflet.heat';
 import type { LatLngExpression } from 'leaflet';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import { useEffect } from 'react';
