@@ -24,8 +24,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/icons/logo";
-import Image from "next/image";
-import placeholderImage from "@/lib/placeholder-images.json";
 import { adminLogin } from "@/app/actions";
 import { AuthContext } from "@/context/auth-provider";
 import { useRouter } from "next/navigation";
@@ -75,8 +73,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:min-h-screen">
-      <div className="flex items-center justify-center py-12">
+    <div className="flex items-center justify-center min-h-screen bg-muted/40">
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
             <div className="flex items-center justify-center gap-2 font-semibold mb-4">
@@ -88,7 +85,7 @@ export default function AdminLoginPage() {
             </p>
           </div>
 
-          <Card className="border-0 shadow-none">
+          <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Admin Access</CardTitle>
               <CardDescription>
@@ -144,15 +141,5 @@ export default function AdminLoginPage() {
           </Card>
         </div>
       </div>
-      <div className="hidden bg-muted lg:block relative">
-        <Image
-          src={placeholderImage.placeholderImages[0].imageUrl}
-          alt="Community members collaborating"
-          fill
-          className="object-cover dark:brightness-[0.2] dark:grayscale"
-          data-ai-hint={placeholderImage.placeholderImages[0].imageHint}
-        />
-      </div>
-    </div>
   );
 }
