@@ -84,12 +84,14 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
       }
     }
     
-    // 3. Determine district from address first, then fallback to coordinates
+    // 3. Determine district and coordinates. Prioritize manual address.
     let district = 'Unknown';
     let lat = values.latitude || 0;
     let long = values.longitude || 0;
+    let addressSource = values.address; // Use manual address by default
 
-    // A. Try to get district and coordinates from the manually entered address (Forward Geocoding)
+    // If manual address is provided, use it for forward geocoding.
+    // This will overwrite lat/long from GPS detection.
     if (values.address) {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(values.address)}&format=json&addressdetails=1&limit=1`);
@@ -99,18 +101,20 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
                 lat = parseFloat(result.lat);
                 long = parseFloat(result.lon);
                 district = result.address?.county || result.address?.state_district || result.address?.city_district || district;
+                // Use the geocoded display name for consistency if needed, or keep manual one. Let's keep the manual one.
             }
         } catch (error) {
-            console.error("Forward geocoding failed, will try reverse geocoding if coordinates exist.", error);
+            console.error("Forward geocoding for manual address failed.", error);
+            // Continue with potentially existing lat/long if forward geocoding fails
         }
-    }
-    
-    // B. If district is still unknown AND we have coordinates, try reverse geocoding
-    if (district === 'Unknown' && values.latitude && values.longitude) {
+    } 
+    // Fallback to reverse geocoding only if address was NOT manually provided but coords exist
+    else if (values.latitude && values.longitude) {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${values.latitude}&lon=${values.longitude}`);
             const data = await response.json();
             district = data.address?.county || data.address?.state_district || data.address?.city_district || 'Unknown';
+            addressSource = data.display_name || addressSource; // Update address from reverse geocoding
         } catch (error) {
             console.error("Reverse geocoding failed:", error);
         }
@@ -126,7 +130,7 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
       location: {
         lat: lat,
         long: long,
-        address: values.address,
+        address: addressSource,
       },
       district: district,
       category: category,
