@@ -19,7 +19,7 @@ export default function AdminDashboardTabs() {
         <AllIssuesAdmin />
       </TabsContent>
       <TabsContent value="map-view">
-        <MapView />
+        {activeTab === 'map-view' && <MapView />}
       </TabsContent>
     </Tabs>
   );

@@ -1,24 +1,41 @@
 
 'use client';
 
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import 'leaflet.heat';
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import type { Complaint } from "@/lib/types";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
-import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+
+// Augment the Leaflet module
+declare module 'leaflet' {
+  interface HeatLayerOptions {
+    minOpacity?: number;
+    maxZoom?: number;
+    max?: number;
+    radius?: number;
+    blur?: number;
+    gradient?: Record<number, string>;
+  }
+
+  function heatLayer(latlngs: (L.LatLng | L.LatLngTuple)[], options?: HeatLayerOptions): any;
+}
+
 
 export default function MapView() {
   const { profile } = useAuth();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<L.Map | null>(null);
+  const heatLayerRef = useRef<any>(null);
 
-  const Heatmap = useMemo(() => dynamic(() => import('@/components/heatmap-dynamic'), {
-    ssr: false,
-    loading: () => <Skeleton className="h-[70vh] w-full" />,
-  }), []);
 
   useEffect(() => {
     if (!profile) {
@@ -54,6 +71,45 @@ export default function MapView() {
       .map(c => [c.location.lat, c.location.long, 1]),
     [complaints]
   );
+  
+  useEffect(() => {
+    if (mapRef.current && !mapInstance.current) {
+        // Map is not initialized, so create it
+        mapInstance.current = L.map(mapRef.current).setView([12.9716, 77.5946], 10);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(mapInstance.current);
+    }
+    
+    if (mapInstance.current) {
+        if (heatLayerRef.current) {
+            mapInstance.current.removeLayer(heatLayerRef.current);
+        }
+
+        if (points.length > 0) {
+            heatLayerRef.current = L.heatLayer(points as L.LatLngTuple[], {
+                radius: 25,
+                blur: 15,
+                maxZoom: 18,
+                gradient: { 0.4: 'blue', 0.65: 'lime', 1: 'red' }
+            }).addTo(mapInstance.current);
+
+            const validPoints = points.map(p => L.latLng(p[0], p[1]));
+            mapInstance.current.fitBounds(L.latLngBounds(validPoints), { padding: [50, 50], maxZoom: 14 });
+        }
+    }
+  }, [points]);
+  
+  // Cleanup map instance on component unmount
+  useEffect(() => {
+      return () => {
+          if (mapInstance.current) {
+              mapInstance.current.remove();
+              mapInstance.current = null;
+          }
+      };
+  }, []);
 
   return (
     <Card>
@@ -65,7 +121,7 @@ export default function MapView() {
       </CardHeader>
       <CardContent>
         <div className="h-[70vh] rounded-lg overflow-hidden">
-           {loading ? <Skeleton className="h-full w-full" /> : <Heatmap points={points} />}
+           {loading ? <Skeleton className="h-full w-full" /> : <div ref={mapRef} style={{ height: '100%', width: '100%' }} />}
         </div>
       </CardContent>
     </Card>
