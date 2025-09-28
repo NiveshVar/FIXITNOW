@@ -96,7 +96,9 @@ export default function MapView() {
             }).addTo(mapInstance.current);
 
             const validPoints = points.map(p => L.latLng(p[0], p[1]));
-            mapInstance.current.fitBounds(L.latLngBounds(validPoints), { padding: [50, 50], maxZoom: 14 });
+            if (validPoints.length > 0) {
+              mapInstance.current.fitBounds(L.latLngBounds(validPoints), { padding: [50, 50], maxZoom: 14 });
+            }
         }
     }
   }, [points]);
