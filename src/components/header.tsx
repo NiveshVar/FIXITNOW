@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import React, { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { markNotificationsAsRead } from "@/app/actions";
 import { Badge } from "./ui/badge";
 
@@ -29,17 +30,23 @@ export default function Header() {
 
   useEffect(() => {
     if (!user) return;
+    
     const q = query(
         collection(db, "notifications"),
-        where("userId", "==", user.uid),
-        orderBy("timestamp", "desc")
+        where("userId", "==", user.uid)
     );
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
         const notifs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification));
+        
+        // Sort notifications by timestamp client-side (newest first)
+        notifs.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+
         setNotifications(notifs);
         const unread = notifs.filter(n => !n.isRead).length;
         setUnreadCount(unread);
     });
+
     return () => unsubscribe();
   }, [user]);
 
