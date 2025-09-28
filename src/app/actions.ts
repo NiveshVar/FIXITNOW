@@ -263,7 +263,7 @@ export async function updateComplaintStatus(complaintId: string, status: Complai
 
                 if(userEmail) {
                     await addDoc(collection(db, 'mail'), {
-                        to: userEmail,
+                        to: [userEmail],
                         message: {
                             subject: `Your issue has been resolved: "${complaintData.title}"`,
                             html: `
