@@ -63,8 +63,6 @@ export default function AllIssuesAdmin() {
     
     setLoading(true);
     
-    // For all admins, fetch all complaints and filter client-side if needed.
-    // Super-admins will see all. District admins will have them filtered.
     const complaintsQuery = query(collection(db, "complaints"));
 
     const unsubscribe = onSnapshot(complaintsQuery, (querySnapshot) => {
@@ -73,20 +71,20 @@ export default function AllIssuesAdmin() {
         allComplaints.push({ id: doc.id, ...doc.data() } as Complaint);
       });
       
-      // If it's a district admin, filter the results.
+      let filteredComplaints = allComplaints;
+
       if (profile.role === 'admin' && profile.district) {
         const adminDistrict = profile.district.toLowerCase();
-        allComplaints = allComplaints.filter(complaint => 
-            (complaint.location?.address?.toLowerCase().includes(adminDistrict)) ||
-            (complaint.district?.toLowerCase().includes(adminDistrict)) ||
-            (complaint.district === 'Unknown')
+        filteredComplaints = allComplaints.filter(complaint => 
+            (complaint.district?.toLowerCase() === adminDistrict) ||
+            (complaint.location?.address?.toLowerCase().includes(adminDistrict))
         );
       }
 
       // Sort by timestamp after filtering
-      allComplaints.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+      filteredComplaints.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
 
-      setComplaints(allComplaints);
+      setComplaints(filteredComplaints);
       setLoading(false);
     });
 

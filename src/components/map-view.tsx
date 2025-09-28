@@ -45,23 +45,21 @@ export default function MapView() {
 
     setLoading(true);
 
-    // Fetch all complaints, filtering will happen client-side
     const complaintsQuery = query(collection(db, "complaints"));
 
     const unsubscribe = onSnapshot(complaintsQuery, (snapshot) => {
       let allComplaints = snapshot.docs.map(doc => ({...doc.data(), id: doc.id }) as Complaint);
       
-      // Filter complaints based on admin role
+      let filteredComplaints = allComplaints;
       if (profile.role === 'admin' && profile.district) {
           const adminDistrict = profile.district.toLowerCase();
-          allComplaints = allComplaints.filter(complaint => 
-              (complaint.location?.address?.toLowerCase().includes(adminDistrict)) ||
-              (complaint.district?.toLowerCase().includes(adminDistrict))
+          filteredComplaints = allComplaints.filter(complaint => 
+              (complaint.district?.toLowerCase() === adminDistrict) ||
+              (complaint.location?.address?.toLowerCase().includes(adminDistrict))
           );
       }
-      // Super-admins will see all complaints without filtering
 
-      setComplaints(allComplaints);
+      setComplaints(filteredComplaints);
       setLoading(false);
     });
 
@@ -77,8 +75,7 @@ export default function MapView() {
   
   useEffect(() => {
     if (mapRef.current && !mapInstance.current) {
-        // Map is not initialized, so create it
-        mapInstance.current = L.map(mapRef.current).setView([11.9416, 79.8083], 9); // Default view (e.g., Tamil Nadu)
+        mapInstance.current = L.map(mapRef.current).setView([11.9416, 79.8083], 9); 
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -103,7 +100,6 @@ export default function MapView() {
               mapInstance.current.fitBounds(L.latLngBounds(validPoints), { padding: [50, 50], maxZoom: 14 });
             }
         } else {
-             // If no points, reset to default view
              if(mapInstance.current) {
                 mapInstance.current.setView([11.9416, 79.8083], 9);
              }
@@ -111,7 +107,6 @@ export default function MapView() {
     }
   }, [points]);
   
-  // Cleanup map instance on component unmount
   useEffect(() => {
       return () => {
           if (mapInstance.current) {
@@ -130,15 +125,15 @@ export default function MapView() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="h-[70vh] rounded-lg overflow-hidden">
+        <div className="h-[70vh] rounded-lg overflow-hidden relative">
            {loading ? (
              <Skeleton className="h-full w-full" />
            ) : (
              <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
            )}
            {!loading && complaints.length === 0 && (
-                <div className="flex items-center justify-center h-full">
-                    <p className="text-muted-foreground">No complaints found for your district.</p>
+                <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                    <p className="text-muted-foreground bg-background p-4 rounded-md shadow-md">No complaints found for your district.</p>
                 </div>
             )}
         </div>
