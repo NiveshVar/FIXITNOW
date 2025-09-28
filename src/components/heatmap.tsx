@@ -9,6 +9,8 @@ import { Complaint } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Skeleton } from './ui/skeleton';
+import type { LatLngExpression } from 'leaflet';
+
 
 // Augment the Leaflet module
 declare module 'leaflet' {
@@ -53,7 +55,7 @@ const Heatmap = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile) return;
+    if (typeof window === 'undefined' || !profile) return;
     
     setLoading(true);
     
