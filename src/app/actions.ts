@@ -83,8 +83,23 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
           }
       }
     }
+    
+    // 3. Determine district from coordinates
+    let district = 'Unknown';
+    if (values.latitude && values.longitude) {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${values.latitude}&lon=${values.longitude}`);
+            const data = await response.json();
+            // This is a best-effort guess, Nominatim address components can vary.
+            // Common keys for district are 'county', 'state_district', etc.
+            district = data.address?.county || data.address?.state_district || data.address?.city_district || 'Unknown';
+        } catch (error) {
+            console.error("Reverse geocoding failed:", error);
+        }
+    }
 
-    // 3. Create complaint document
+
+    // 4. Create complaint document
     const complaintData = {
       userId: values.userId,
       userName: values.userName,
@@ -95,6 +110,7 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
         long: values.longitude || 0,
         address: values.address,
       },
+      district: district,
       category: category,
       photoURL: photoURL,
       status: "Pending" as const,
@@ -103,7 +119,7 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
 
     const complaintRef = await addDoc(collection(db, "complaints"), complaintData);
 
-    // 4. AI Duplicate Detection if photo exists and key is present
+    // 5. AI Duplicate Detection if photo exists and key is present
     if (values.photoDataUri && hasGeminiKey && values.latitude && values.longitude) {
       try {
         const duplicateResult = await detectDuplicateIssue({
@@ -127,6 +143,7 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
 
     revalidatePath("/");
     revalidatePath("/admin/dashboard");
+    revalidatePath("/admin/dashboard/map-view");
     return { success: true, id: complaintRef.id };
   } catch (error: any) {
     const errorMessage = error.response?.data?.error?.message || error.message;
@@ -155,7 +172,7 @@ export async function adminLogin(values: z.infer<typeof adminLoginSchema>): Prom
 
     if (userDoc.exists()) {
       const userProfile = userDoc.data() as UserProfile;
-      if (userProfile.role === 'admin') {
+      if (userProfile.role === 'admin' || userProfile.role === 'super-admin') {
         return { success: true, profile: userProfile };
       }
     }
@@ -175,8 +192,24 @@ export async function updateComplaintStatus(complaintId: string, status: Complai
     try {
         const complaintRef = doc(db, "complaints", complaintId);
         await updateDoc(complaintRef, { status });
+
+        // Add a notification for the user
+        const complaintDoc = await getDoc(complaintRef);
+        if (complaintDoc.exists()) {
+            const complaintData = complaintDoc.data();
+            await addDoc(collection(db, "notifications"), {
+                userId: complaintData.userId,
+                complaintId: complaintId,
+                complaintTitle: complaintData.title,
+                message: `The status of your complaint "${complaintData.title}" has been updated to "${status}".`,
+                isRead: false,
+                timestamp: serverTimestamp(),
+            });
+        }
+
         revalidatePath("/");
         revalidatePath("/admin/dashboard");
+        revalidatePath("/admin/dashboard/map-view");
         return { success: true };
     } catch (error: any) {
         return { error: error.message };
@@ -202,4 +235,24 @@ export async function findOrCreateUser(
       role: "user",
     });
   }
+}
+
+export async function markNotificationsAsRead(userId: string) {
+    try {
+        const notificationsRef = collection(db, "notifications");
+        const q = query(notificationsRef, where("userId", "==", userId), where("isRead", "==", false));
+        const querySnapshot = await getDocs(q);
+        
+        const batch = [];
+        querySnapshot.forEach((doc) => {
+            batch.push(updateDoc(doc.ref, { isRead: true }));
+        });
+
+        await Promise.all(batch);
+        revalidatePath('/');
+        return { success: true };
+
+    } catch (error: any) {
+        return { error: error.message };
+    }
 }

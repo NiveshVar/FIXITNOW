@@ -29,7 +29,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Complaint, ComplaintStatus } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
@@ -45,9 +45,11 @@ import { updateComplaintStatus } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { ChevronDown, Eye } from "lucide-react";
 import IssueDetailsDialog from "./issue-details-dialog";
+import { useAuth } from "@/hooks/use-auth";
 
 
 export default function AllIssuesAdmin() {
+  const { profile } = useAuth();
   const [complaints, setComplaints] = React.useState<Complaint[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -57,10 +59,29 @@ export default function AllIssuesAdmin() {
   const [selectedComplaint, setSelectedComplaint] = React.useState<Complaint | null>(null);
 
   React.useEffect(() => {
+    if (!profile) return;
+    
     setLoading(true);
-    const q = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
+    
+    let complaintsQuery;
+    if (profile.role === 'super-admin') {
+      // Super admin sees all complaints
+      complaintsQuery = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
+    } else if (profile.role === 'admin' && profile.district) {
+      // District admin sees complaints for their district and unassigned ones as a fallback
+      complaintsQuery = query(
+        collection(db, "complaints"),
+        where("district", "in", [profile.district, "Unknown"]),
+        orderBy("timestamp", "desc")
+      );
+    } else {
+      // No profile or role, see nothing
+      setLoading(false);
+      return;
+    }
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+
+    const unsubscribe = onSnapshot(complaintsQuery, (querySnapshot) => {
       const allComplaints: Complaint[] = [];
       querySnapshot.forEach((doc) => {
         allComplaints.push({ id: doc.id, ...doc.data() } as Complaint);
@@ -70,7 +91,7 @@ export default function AllIssuesAdmin() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [profile]);
   
   const handleStatusChange = async (complaintId: string, status: ComplaintStatus) => {
     const result = await updateComplaintStatus(complaintId, status);
@@ -93,6 +114,11 @@ export default function AllIssuesAdmin() {
       accessorKey: "category",
       header: "Category",
       cell: ({ row }) => <div className="capitalize">{row.getValue("category")}</div>,
+    },
+    {
+      accessorKey: "district",
+      header: "District",
+      cell: ({ row }) => <div className="capitalize">{row.getValue("district")}</div>,
     },
     {
       accessorKey: "status",
