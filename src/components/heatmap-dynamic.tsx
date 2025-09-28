@@ -2,19 +2,56 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Complaint } from '@/lib/types';
+import type { Complaint } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import 'leaflet.heat';
+import type { LatLngExpression } from 'leaflet';
 import { Skeleton } from './ui/skeleton';
 
-// Dynamically import the Heatmap component with SSR disabled.
-const Heatmap = dynamic(() => import('@/components/heatmap'), {
-  ssr: false,
-  loading: () => <Skeleton className="h-[70vh] w-full" />,
-});
+// Augment the Leaflet module
+declare module 'leaflet' {
+  interface HeatLayerOptions {
+    minOpacity?: number;
+    maxZoom?: number;
+    max?: number;
+    radius?: number;
+    blur?: number;
+    gradient?: Record<number, string>;
+  }
+
+  function heatLayer(latlngs: LatLngExpression[], options?: HeatLayerOptions): any;
+}
+
+
+const HeatLayerComponent = ({ points }: { points: [number, number, number][] }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (points.length > 0) {
+      const heat = (L as any).heatLayer(points, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 18,
+        gradient: { 0.4: 'blue', 0.65: 'lime', 1: 'red' }
+      }).addTo(map);
+      
+      const validPoints = points.map(p => L.latLng(p[0], p[1]));
+      if (validPoints.length > 0) {
+        map.fitBounds(L.latLngBounds(validPoints), { padding: [50, 50] });
+      }
+
+      return () => {
+        map.removeLayer(heat);
+      };
+    }
+  }, [points, map]);
+
+  return null;
+};
+
 
 const HeatmapDynamic = () => {
   const { profile } = useAuth();
@@ -23,9 +60,9 @@ const HeatmapDynamic = () => {
 
   useEffect(() => {
     if (!profile) return;
-    
+
     setLoading(true);
-    
+
     let complaintsQuery;
     if (profile.role === 'super-admin') {
       complaintsQuery = query(collection(db, "complaints"));
@@ -45,43 +82,25 @@ const HeatmapDynamic = () => {
     return () => unsubscribe();
   }, [profile]);
 
-  const points: [number, number, number][] = useMemo(() => 
+  const points: [number, number, number][] = useMemo(() =>
     complaints
       .filter(c => c.location?.lat && c.location?.long)
       .map(c => [c.location.lat, c.location.long, 1]), // intensity of 1 for each complaint
     [complaints]
   );
-  
+
   if (loading) {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Issue Hotspots</CardTitle>
-                <CardDescription>
-                An interactive heatmap showing the density of reported issues in your area.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Skeleton className="h-[70vh] w-full" />
-            </CardContent>
-        </Card>
-    )
+      return <Skeleton className="h-full w-full" />;
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Issue Hotspots</CardTitle>
-        <CardDescription>
-          An interactive heatmap showing the density of reported issues in your area.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-          <div className="h-[70vh] rounded-lg overflow-hidden">
-             <Heatmap points={points} />
-          </div>
-      </CardContent>
-    </Card>
+    <MapContainer center={[12.9716, 77.5946]} zoom={10} style={{ height: '100%', width: '100%' }}>
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+        <HeatLayerComponent points={points} />
+    </MapContainer>
   );
 };
 
