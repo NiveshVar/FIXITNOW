@@ -234,18 +234,51 @@ export async function updateComplaintStatus(complaintId: string, status: Complai
         const complaintRef = doc(db, "complaints", complaintId);
         await updateDoc(complaintRef, { status });
 
-        // Add a notification for the user
         const complaintDoc = await getDoc(complaintRef);
-        if (complaintDoc.exists()) {
-            const complaintData = complaintDoc.data();
-            await addDoc(collection(db, "notifications"), {
-                userId: complaintData.userId,
-                complaintId: complaintId,
-                complaintTitle: complaintData.title,
-                message: `The status of your complaint "${complaintData.title}" has been updated to "${status}".`,
-                isRead: false,
-                timestamp: serverTimestamp(),
-            });
+        if (!complaintDoc.exists()) {
+            throw new Error("Complaint not found.");
+        }
+        
+        const complaintData = complaintDoc.data();
+        const userId = complaintData.userId;
+
+        // Add a notification for the user
+        await addDoc(collection(db, "notifications"), {
+            userId: userId,
+            complaintId: complaintId,
+            complaintTitle: complaintData.title,
+            message: `The status of your complaint "${complaintData.title}" has been updated to "${status}".`,
+            isRead: false,
+            timestamp: serverTimestamp(),
+        });
+
+        // If status is 'Resolved', trigger an email
+        if (status === 'Resolved') {
+            const userRef = doc(db, "users", userId);
+            const userDoc = await getDoc(userRef);
+
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                const userEmail = userData.email;
+
+                if(userEmail) {
+                    await addDoc(collection(db, 'mail'), {
+                        to: userEmail,
+                        message: {
+                            subject: `Your issue has been resolved: "${complaintData.title}"`,
+                            html: `
+                                <h1>Issue Resolved!</h1>
+                                <p>Hi ${userData.name || 'User'},</p>
+                                <p>We're happy to let you know that your reported issue, <strong>"${complaintData.title}"</strong>, has been marked as resolved.</p>
+                                <p>Thank you for helping us improve our community.</p>
+                                <br>
+                                <p>Sincerely,</p>
+                                <p>The FixIt Now Team</p>
+                            `
+                        }
+                    });
+                }
+            }
         }
 
         revalidatePath("/");
@@ -297,5 +330,3 @@ export async function markNotificationsAsRead(userId: string) {
         return { error: error.message };
     }
 }
-
-
