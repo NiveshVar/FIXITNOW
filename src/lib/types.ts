@@ -1,3 +1,4 @@
+
 import type { Timestamp } from 'firebase/firestore';
 
 export type UserRole = 'user' | 'admin' | 'super-admin';
@@ -8,6 +9,7 @@ export type UserProfile = {
   email: string;
   role: UserRole;
   district?: string;
+  phone?: string;
 };
 
 export type ComplaintCategory = 'pothole' | 'tree fall' | 'garbage' | 'stray dog' | 'other';
@@ -18,6 +20,7 @@ export type Complaint = {
   id: string;
   userId: string;
   userName: string;
+  userPhone?: string;
   title: string;
   description: string;
   location: {

@@ -32,6 +32,7 @@ const reportSchema = z.object({
   photoDataUri: z.string().optional(),
   userId: z.string(),
   userName: z.string(),
+  userPhone: z.string().optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
 });
@@ -147,6 +148,7 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     const complaintData = {
       userId: values.userId,
       userName: values.userName,
+      userPhone: values.userPhone,
       title: values.title,
       description: values.description,
       location: {
@@ -196,38 +198,102 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
   }
 }
 
-const adminLoginSchema = z.object({
-  email: z.string().email(),
+const loginWithEmailOrPhoneSchema = z.object({
+  emailOrPhone: z.string(),
   password: z.string(),
 });
 
-type AdminLoginSuccess = { success: true; profile: UserProfile };
-type AdminLoginError = { success: false; error: string; profile?: null };
-type AdminLoginResult = AdminLoginSuccess | AdminLoginError;
+type LoginSuccess = { success: true; profile: UserProfile };
+type LoginError = { success: false; error: string; profile?: null };
+type LoginResult = LoginSuccess | LoginError;
+
+async function findUserByPhone(phone: string): Promise<UserProfile | null> {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("phone", "==", phone));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return null;
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    return userDoc.data() as UserProfile;
+}
+
+async function findUserByEmail(email: string): Promise<UserProfile | null> {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return null;
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    return userDoc.data() as UserProfile;
+}
+
+export async function loginWithEmailOrPhone(values: z.infer<typeof loginWithEmailOrPhoneSchema>): Promise<LoginResult> {
+    try {
+        let profile: UserProfile | null = null;
+        let email = values.emailOrPhone;
+        const isEmail = z.string().email().safeParse(email).success;
+
+        if (isEmail) {
+            profile = await findUserByEmail(email);
+        } else {
+            profile = await findUserByPhone(email);
+            if (profile) {
+                email = profile.email;
+            }
+        }
+
+        if (!profile) {
+            return { success: false, error: "No account found with this email or phone number." };
+        }
+
+        await signInWithEmailAndPassword(auth, email, values.password);
+        return { success: true, profile: profile };
+
+    } catch (error: any) {
+        return { success: false, error: "Invalid credentials." };
+    }
+}
 
 
-export async function adminLogin(values: z.infer<typeof adminLoginSchema>): Promise<AdminLoginResult> {
+const adminLoginSchema = z.object({
+  emailOrPhone: z.string(),
+  password: z.string(),
+});
+
+export async function adminLogin(values: z.infer<typeof adminLoginSchema>): Promise<LoginResult> {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-    const user = userCredential.user;
+    let profile: UserProfile | null = null;
+    let email = values.emailOrPhone;
+    const isEmail = z.string().email().safeParse(email).success;
 
-    const userDocRef = doc(db, "users", user.uid);
-    const userDoc = await getDoc(userDocRef);
+    if (isEmail) {
+        profile = await findUserByEmail(email);
+    } else {
+        profile = await findUserByPhone(email);
+        if (profile) {
+            email = profile.email;
+        }
+    }
 
-    if (userDoc.exists()) {
-      const userProfile = userDoc.data() as UserProfile;
-      if (userProfile.role === 'admin' || userProfile.role === 'super-admin') {
-        return { success: true, profile: userProfile };
-      }
+    if (!profile) {
+        return { success: false, error: "No account found with this email or phone number." };
     }
     
-    // Explicitly sign out non-admins to prevent session confusion
-    await signOut(auth);
-    return { success: false, error: "You are not authorized to access this page." };
+    if (profile.role !== 'admin' && profile.role !== 'super-admin') {
+      return { success: false, error: "You are not authorized to access this page." };
+    }
+
+    await signInWithEmailAndPassword(auth, email, values.password);
+    return { success: true, profile: profile };
 
   } catch (error: any) {
-    // Handle generic errors like wrong password
-    return { success: false, error: "Invalid email or password." };
+    return { success: false, error: "Invalid credentials." };
   }
 }
 
@@ -244,6 +310,9 @@ export async function updateComplaintStatus(complaintId: string, status: Complai
         
         const complaintData = complaintDoc.data();
         const userId = complaintData.userId;
+        
+        const userDocRef = doc(db, "users", userId);
+        const userDoc = await getDoc(userDocRef);
 
         // Add a notification for the user
         await addDoc(collection(db, "notifications"), {
@@ -254,7 +323,7 @@ export async function updateComplaintStatus(complaintId: string, status: Complai
             isRead: false,
             timestamp: serverTimestamp(),
         });
-
+        
         revalidatePath("/");
         revalidatePath("/admin/dashboard");
         revalidatePath("/admin/dashboard/map-view");
@@ -278,8 +347,9 @@ export async function findOrCreateUser(
   if (querySnapshot.empty) {
     await setDoc(userRef, {
       uid: uid,
-      name: "User",
-      email: phone,
+      name: "User", // Default name for phone users
+      email: phone, // Using phone as a stand-in for email
+      phone: phone,
       role: "user",
     });
   }

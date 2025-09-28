@@ -27,12 +27,9 @@ import { Logo } from "@/components/icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
 import { adminLogin } from "@/app/actions";
-import { AuthContext } from "@/context/auth-provider";
-import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
 
 const loginSchema = z.object({
-  email: z.string().email({ message: "Invalid email address." }),
+  emailOrPhone: z.string().min(1, { message: "This field is required." }),
   password: z
     .string()
     .min(6, { message: "Password must be at least 6 characters." }),
@@ -41,30 +38,26 @@ const loginSchema = z.object({
 export default function AdminLoginPage() {
   const { toast } = useToast();
   const [isClient, setIsClient] = React.useState(false);
-  const authContext = React.useContext(AuthContext);
-  const router = useRouter();
-
 
   React.useEffect(() => {
     setIsClient(true);
   }, []);
 
+
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { emailOrPhone: "", password: "" },
   });
 
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
     const result = await adminLogin(values);
     
-    if (result.success && result.profile) {
+    if (result.success) {
       toast({
         title: "Admin Login Successful",
         description: "Redirecting to the Admin Dashboard...",
       });
-      // Directly set the auth state before redirecting
-      authContext.setAuth(auth.currentUser, result.profile);
-      router.push("/admin/dashboard");
+      window.location.href = "/admin/dashboard";
     } else {
       toast({
         variant: "destructive",
@@ -104,10 +97,10 @@ export default function AdminLoginPage() {
                   >
                     <FormField
                       control={loginForm.control}
-                      name="email"
+                      name="emailOrPhone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>Email or Phone</FormLabel>
                           <FormControl>
                             <Input {...field} />
                           </FormControl>

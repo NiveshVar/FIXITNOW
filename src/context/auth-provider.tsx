@@ -2,11 +2,10 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from "react";
-import { onAuthStateChanged, User, getRedirectResult } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { UserProfile } from "@/lib/types";
-import { findOrCreateUser } from "@/app/actions";
 
 interface AuthContextType {
   user: User | null;
@@ -29,76 +28,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserProfile = useCallback(async (user: User | null) => {
-    if (user) {
-      if (user.phoneNumber && !user.email) {
-        await findOrCreateUser(user.uid, user.phoneNumber);
-      }
-      const userDocRef = doc(db, "users", user.uid);
+  const setAuth = useCallback((user: User | null, profile: UserProfile | null) => {
+    setUser(user);
+    setProfile(profile);
+  }, []);
+
+  const fetchUserProfile = useCallback(async (userToFetch: User) => {
+    try {
+      const userDocRef = doc(db, "users", userToFetch.uid);
       const userDoc = await getDoc(userDocRef);
       if (userDoc.exists()) {
         setProfile(userDoc.data() as UserProfile);
       } else {
         setProfile(null);
       }
-    } else {
+    } catch (error) {
+      console.error("Failed to fetch user profile:", error);
       setProfile(null);
+    } finally {
+      setLoading(false);
     }
   }, []);
-
-  const setAuth = useCallback((user: User | null, profile: UserProfile | null) => {
-    setUser(user);
-    setProfile(profile);
-    setLoading(false);
-  }, []);
-
-
-  const handleAuthState = useCallback(async (user: User | null) => {
-    setUser(user);
-    await fetchUserProfile(user);
-    setLoading(false);
-  }, [fetchUserProfile]);
-
 
   const refreshAuth = useCallback(async () => {
     setLoading(true);
     const currentUser = auth.currentUser;
     setUser(currentUser);
-    await fetchUserProfile(currentUser);
-    setLoading(false);
+    if (currentUser) {
+      await fetchUserProfile(currentUser);
+    } else {
+      setProfile(null);
+      setLoading(false);
+    }
   }, [fetchUserProfile]);
 
 
   useEffect(() => {
-    const handleAuthRedirect = async () => {
+    const unsubscribe = onAuthStateChanged(auth, (userState) => {
       setLoading(true);
-      try {
-        const result = await getRedirectResult(auth);
-        if (result) {
-          const user = result.user;
-          const userDocRef = doc(db, "users", user.uid);
-          const userDoc = await getDoc(userDocRef);
-          if (!userDoc.exists()) {
-            await setDoc(userDocRef, {
-              uid: user.uid,
-              name: user.displayName,
-              email: user.email,
-              role: "user",
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Auth redirect result error:", error);
+      setUser(userState);
+      if (userState) {
+        fetchUserProfile(userState);
+      } else {
+        setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
-    };
-
-    handleAuthRedirect();
-
-    const unsubscribe = onAuthStateChanged(auth, handleAuthState);
+    });
 
     return () => unsubscribe();
-  }, [handleAuthState]);
+  }, [fetchUserProfile]);
+
 
   const value = { user, profile, loading, refreshAuth, setAuth };
 

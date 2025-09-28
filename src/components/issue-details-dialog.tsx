@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Complaint } from "@/lib/types";
 import ComplaintStatusBadge from "./complaint-status-badge";
-import { Calendar, MapPin, User, AlertTriangle } from "lucide-react";
+import { Calendar, MapPin, User, AlertTriangle, Phone } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 type IssueDetailsDialogProps = {
@@ -71,6 +71,12 @@ export default function IssueDetailsDialog({ complaint, isOpen, onOpenChange }: 
                             <User className="h-4 w-4 shrink-0" />
                             <span>Reported by {complaint.userName}</span>
                         </div>
+                        {complaint.userPhone && (
+                           <div className="flex items-center gap-2">
+                                <Phone className="h-4 w-4 shrink-0" />
+                                <span>{complaint.userPhone}</span>
+                            </div>
+                        )}
                         <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 shrink-0" />
                             <span>on {complaint.timestamp?.toDate().toLocaleDateString()}</span>
