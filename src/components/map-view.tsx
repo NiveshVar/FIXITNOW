@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import type { Complaint } from "@/lib/types";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { useEffect, useMemo, useState, useRef } from "react";
 
 // Augment the Leaflet module
@@ -45,20 +45,23 @@ export default function MapView() {
 
     setLoading(true);
 
-    let complaintsQuery;
-    if (profile.role === 'super-admin') {
-      complaintsQuery = query(collection(db, "complaints"));
-    } else if (profile.role === 'admin' && profile.district) {
-      complaintsQuery = query(collection(db, "complaints"), where("district", "==", profile.district));
-    } else {
-        setLoading(false);
-        return;
-    }
-
+    // Fetch all complaints, filtering will happen client-side
+    const complaintsQuery = query(collection(db, "complaints"));
 
     const unsubscribe = onSnapshot(complaintsQuery, (snapshot) => {
-      const fetchedComplaints = snapshot.docs.map(doc => ({...doc.data(), id: doc.id }) as Complaint);
-      setComplaints(fetchedComplaints);
+      let allComplaints = snapshot.docs.map(doc => ({...doc.data(), id: doc.id }) as Complaint);
+      
+      // Filter complaints based on admin role
+      if (profile.role === 'admin' && profile.district) {
+          const adminDistrict = profile.district.toLowerCase();
+          allComplaints = allComplaints.filter(complaint => 
+              (complaint.location?.address?.toLowerCase().includes(adminDistrict)) ||
+              (complaint.district?.toLowerCase().includes(adminDistrict))
+          );
+      }
+      // Super-admins will see all complaints without filtering
+
+      setComplaints(allComplaints);
       setLoading(false);
     });
 
@@ -75,7 +78,7 @@ export default function MapView() {
   useEffect(() => {
     if (mapRef.current && !mapInstance.current) {
         // Map is not initialized, so create it
-        mapInstance.current = L.map(mapRef.current).setView([12.9716, 77.5946], 10);
+        mapInstance.current = L.map(mapRef.current).setView([11.9416, 79.8083], 9); // Default view (e.g., Tamil Nadu)
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -99,6 +102,11 @@ export default function MapView() {
             if (validPoints.length > 0) {
               mapInstance.current.fitBounds(L.latLngBounds(validPoints), { padding: [50, 50], maxZoom: 14 });
             }
+        } else {
+             // If no points, reset to default view
+             if(mapInstance.current) {
+                mapInstance.current.setView([11.9416, 79.8083], 9);
+             }
         }
     }
   }, [points]);
@@ -118,12 +126,21 @@ export default function MapView() {
       <CardHeader>
         <CardTitle>Issue Hotspots</CardTitle>
         <CardDescription>
-          An interactive heatmap showing the density of reported issues.
+          An interactive heatmap showing the density of reported issues for your district.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="h-[70vh] rounded-lg overflow-hidden">
-           {loading ? <Skeleton className="h-full w-full" /> : <div ref={mapRef} style={{ height: '100%', width: '100%' }} />}
+           {loading ? (
+             <Skeleton className="h-full w-full" />
+           ) : (
+             <div ref={mapRef} style={{ height: '100%', width: '100%' }} />
+           )}
+           {!loading && complaints.length === 0 && (
+                <div className="flex items-center justify-center h-full">
+                    <p className="text-muted-foreground">No complaints found for your district.</p>
+                </div>
+            )}
         </div>
       </CardContent>
     </Card>
