@@ -63,30 +63,28 @@ export default function AllIssuesAdmin() {
     
     setLoading(true);
     
-    let complaintsQuery;
-    if (profile.role === 'super-admin') {
-      complaintsQuery = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
-    } else if (profile.role === 'admin' && profile.district) {
-      complaintsQuery = query(
-        collection(db, "complaints"),
-        where("district", "in", [profile.district, "Unknown"])
-      );
-    } else {
-      setLoading(false);
-      return;
-    }
-
+    // For all admins, fetch all complaints and filter client-side if needed.
+    // Super-admins will see all. District admins will have them filtered.
+    const complaintsQuery = query(collection(db, "complaints"));
 
     const unsubscribe = onSnapshot(complaintsQuery, (querySnapshot) => {
-      const allComplaints: Complaint[] = [];
+      let allComplaints: Complaint[] = [];
       querySnapshot.forEach((doc) => {
         allComplaints.push({ id: doc.id, ...doc.data() } as Complaint);
       });
       
-      // Sort client-side if we couldn't do it in the query
-      if (profile.role === 'admin') {
-        allComplaints.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+      // If it's a district admin, filter the results.
+      if (profile.role === 'admin' && profile.district) {
+        const adminDistrict = profile.district.toLowerCase();
+        allComplaints = allComplaints.filter(complaint => 
+            (complaint.location?.address?.toLowerCase().includes(adminDistrict)) ||
+            (complaint.district?.toLowerCase().includes(adminDistrict)) ||
+            (complaint.district === 'Unknown')
+        );
       }
+
+      // Sort by timestamp after filtering
+      allComplaints.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
 
       setComplaints(allComplaints);
       setLoading(false);
