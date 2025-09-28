@@ -84,14 +84,32 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
       }
     }
     
-    // 3. Determine district from coordinates
+    // 3. Determine district from address first, then fallback to coordinates
     let district = 'Unknown';
-    if (values.latitude && values.longitude) {
+    let lat = values.latitude || 0;
+    let long = values.longitude || 0;
+
+    // A. Try to get district and coordinates from the manually entered address (Forward Geocoding)
+    if (values.address) {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(values.address)}&format=json&addressdetails=1&limit=1`);
+            const data = await response.json();
+            if (data && data.length > 0) {
+                const result = data[0];
+                lat = parseFloat(result.lat);
+                long = parseFloat(result.lon);
+                district = result.address?.county || result.address?.state_district || result.address?.city_district || district;
+            }
+        } catch (error) {
+            console.error("Forward geocoding failed, will try reverse geocoding if coordinates exist.", error);
+        }
+    }
+    
+    // B. If district is still unknown AND we have coordinates, try reverse geocoding
+    if (district === 'Unknown' && values.latitude && values.longitude) {
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${values.latitude}&lon=${values.longitude}`);
             const data = await response.json();
-            // This is a best-effort guess, Nominatim address components can vary.
-            // Common keys for district are 'county', 'state_district', etc.
             district = data.address?.county || data.address?.state_district || data.address?.city_district || 'Unknown';
         } catch (error) {
             console.error("Reverse geocoding failed:", error);
@@ -106,8 +124,8 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
       title: values.title,
       description: values.description,
       location: {
-        lat: values.latitude || 0,
-        long: values.longitude || 0,
+        lat: lat,
+        long: long,
         address: values.address,
       },
       district: district,
@@ -120,12 +138,12 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     const complaintRef = await addDoc(collection(db, "complaints"), complaintData);
 
     // 5. AI Duplicate Detection if photo exists and key is present
-    if (values.photoDataUri && hasGeminiKey && values.latitude && values.longitude) {
+    if (values.photoDataUri && hasGeminiKey && lat && long) {
       try {
         const duplicateResult = await detectDuplicateIssue({
           photoDataUri: values.photoDataUri,
-          latitude: values.latitude,
-          longitude: values.longitude,
+          latitude: lat,
+          longitude: long,
           complaintId: complaintRef.id,
         });
 
@@ -256,3 +274,4 @@ export async function markNotificationsAsRead(userId: string) {
         return { error: error.message };
     }
 }
+
