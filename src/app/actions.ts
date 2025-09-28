@@ -217,6 +217,10 @@ export async function adminLogin(values: z.infer<typeof adminLoginSchema>): Prom
     if (userDoc.exists()) {
       const userProfile = userDoc.data() as UserProfile;
       if (userProfile.role === 'admin' || userProfile.role === 'super-admin') {
+        if (!userProfile.district && userProfile.role === 'admin') {
+             await signOut(auth);
+            return { success: false, error: "Admin account is not configured with a district." };
+        }
         return { success: true, profile: userProfile };
       }
     }
@@ -301,6 +305,6 @@ export async function markNotificationsAsRead(userId: string) {
         return { success: true };
 
     } catch (error: any) {
-        return { error: error.message };
+        return { error: message };
     }
 }
