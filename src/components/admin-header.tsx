@@ -3,7 +3,7 @@
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, Map, LayoutDashboard } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Logo } from "./icons/logo";
 import { useToast } from "@/hooks/use-toast";
 import { signOut } from "firebase/auth";
@@ -44,18 +44,8 @@ export default function AdminHeader() {
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
       <div className="flex items-center gap-2 font-semibold">
         <Logo className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold">FixIt Now - Admin</span>
+        <Link href="/admin/dashboard"><span className="text-lg font-bold">FixIt Now - Admin</span></Link>
       </div>
-       <nav className="flex items-center gap-4 mx-6">
-          <Link href="/admin/dashboard" className={cn("flex items-center gap-2 text-sm font-medium", pathname === "/admin/dashboard" ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
-            <LayoutDashboard />
-            List View
-          </Link>
-           <Link href="/admin/dashboard/map-view" className={cn("flex items-center gap-2 text-sm font-medium", pathname === "/admin/dashboard/map-view" ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
-            <Map />
-            Map View
-          </Link>
-        </nav>
       <div className="ml-auto flex items-center gap-4">
         <div className="text-sm text-muted-foreground">
           Welcome, <span className="font-medium text-foreground">{profile?.name}</span>

@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useEffect } from 'react';
-import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet.heat';
 import L from 'leaflet';
 import type { LatLngExpression } from 'leaflet';
+import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import { useEffect } from 'react';
 
 // Augment the Leaflet module
 declare module 'leaflet' {
@@ -18,14 +18,14 @@ declare module 'leaflet' {
     gradient?: Record<number, string>;
   }
 
-  function heatLayer(latlngs: (LatLng | LatLngTuple)[], options?: HeatLayerOptions): any;
+  function heatLayer(latlngs: (L.LatLng | L.LatLngTuple)[], options?: HeatLayerOptions): any;
   
   interface Map {
     _hotspots?: any;
   }
 }
 
-const HeatLayerComponent = ({ points }: { points: (LatLng | LatLngTuple)[] }) => {
+const HeatLayerComponent = ({ points }: { points: (L.LatLng | L.LatLngTuple)[] }) => {
   const map = useMap();
 
   useEffect(() => {

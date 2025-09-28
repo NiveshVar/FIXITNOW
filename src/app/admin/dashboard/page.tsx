@@ -1,8 +1,8 @@
 
-import AllIssuesAdmin from "@/components/all-issues-admin";
+import AdminDashboardTabs from "@/components/admin-dashboard-tabs";
 
 export default function AdminDashboardPage() {
     return (
-        <AllIssuesAdmin />
+        <AdminDashboardTabs />
     );
 }

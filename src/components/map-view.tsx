@@ -10,7 +10,7 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
-export default function MapViewPage() {
+export default function MapView() {
   const { profile } = useAuth();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,9 +34,10 @@ export default function MapViewPage() {
     } else if (profile.role === 'admin' && profile.district) {
       complaintsQuery = query(collection(db, "complaints"), where("district", "==", profile.district));
     } else {
-      setLoading(false);
-      return;
+        setLoading(false);
+        return;
     }
+
 
     const unsubscribe = onSnapshot(complaintsQuery, (snapshot) => {
       const fetchedComplaints = snapshot.docs.map(doc => ({...doc.data(), id: doc.id }) as Complaint);
@@ -59,7 +60,7 @@ export default function MapViewPage() {
       <CardHeader>
         <CardTitle>Issue Hotspots</CardTitle>
         <CardDescription>
-          An interactive heatmap showing the density of reported issues in your area.
+          An interactive heatmap showing the density of reported issues.
         </CardDescription>
       </CardHeader>
       <CardContent>
