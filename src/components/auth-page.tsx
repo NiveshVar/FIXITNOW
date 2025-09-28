@@ -33,13 +33,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Logo } from "./icons/logo";
 import Image from "next/image";
 import placeholderImage from "@/lib/placeholder-images.json";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address." }),
@@ -54,8 +47,6 @@ const signupSchema = z.object({
   password: z
     .string()
     .min(6, { message: "Password must be at least 6 characters." }),
-  district: z.string().optional(),
-  role: z.enum(["user", "admin"]),
 });
 
 export default function AuthPage() {
@@ -68,7 +59,7 @@ export default function AuthPage() {
 
   const signupForm = useForm<z.infer<typeof signupSchema>>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: "", email: "", password: "", role: "user" },
+    defaultValues: { name: "", email: "", password: "" },
   });
 
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
@@ -97,18 +88,12 @@ export default function AuthPage() {
       );
       const user = userCredential.user;
       
-      const userProfile: any = {
+      await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         name: values.name,
         email: user.email,
-        role: values.role,
-      };
-
-      if (values.role === 'admin') {
-        userProfile.district = values.district || 'Unknown';
-      }
-
-      await setDoc(doc(db, "users", user.uid), userProfile);
+        role: "user", // Hardcode role to 'user' for security
+      });
       
       toast({
         title: "Sign Up Successful",
@@ -123,8 +108,6 @@ export default function AuthPage() {
     }
   };
   
-  const role = signupForm.watch("role");
-
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2 xl:min-h-screen">
       <div className="flex items-center justify-center py-12">
@@ -250,42 +233,6 @@ export default function AuthPage() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                          control={signupForm.control}
-                          name="role"
-                          render={({ field }) => (
-                              <FormItem>
-                                  <FormLabel>Role</FormLabel>
-                                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                      <FormControl>
-                                          <SelectTrigger>
-                                              <SelectValue placeholder="Select a role" />
-                                          </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                          <SelectItem value="user">User</SelectItem>
-                                          <SelectItem value="admin">Admin</SelectItem>
-                                      </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                              </FormItem>
-                          )}
-                      />
-                      {role === 'admin' && (
-                          <FormField
-                              control={signupForm.control}
-                              name="district"
-                              render={({ field }) => (
-                                  <FormItem>
-                                      <FormLabel>District</FormLabel>
-                                      <FormControl>
-                                          <Input placeholder="e.g., Vellore" {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                  </FormItem>
-                              )}
-                          />
-                      )}
                       <Button
                         type="submit"
                         className="w-full"
