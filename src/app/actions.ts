@@ -101,30 +101,33 @@ export async function createComplaint(values: z.infer<typeof reportSchema>) {
     let long = values.longitude || 0;
     let addressSource = values.address;
 
+    // Prioritize manual address for geocoding if it exists
     if (values.address) {
-        // First, try the user's suggested method: search for a district in the address string.
+        // First, try our internal list matching.
         const foundDistrict = findDistrictInAddress(values.address);
         if (foundDistrict) {
             district = foundDistrict;
         }
 
         // Use forward geocoding to get lat/long for the manual address.
-        // This will overwrite lat/long from GPS detection if a manual address is provided.
+        // This also helps find a district if our list matching fails.
         try {
             const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(values.address)}&format=json&addressdetails=1&limit=1`);
             const data = await response.json();
             if (data && data.length > 0) {
                 const result = data[0];
+                // Overwrite lat/long only if we successfully geocode the manual address
                 lat = parseFloat(result.lat);
                 long = parseFloat(result.lon);
-                // If we still haven't found a district, try to get it from the geocoding result as a fallback.
+                
+                // If we still haven't found a district from our list, try to get it from the geocoding result.
                 if (district === 'Unknown') {
-                   district = result.address?.county || result.address?.state_district || result.address?.city_district || district;
+                   district = result.address?.county || result.address?.state_district || result.address?.city_district || 'Unknown';
                 }
             }
         } catch (error) {
             console.error("Forward geocoding for manual address failed.", error);
-            // Continue with potentially existing lat/long if forward geocoding fails
+            // Continue with GPS lat/long if geocoding fails but GPS coords exist.
         }
     } 
     // Fallback to reverse geocoding only if address was NOT manually provided but coords exist
@@ -251,35 +254,6 @@ export async function updateComplaintStatus(complaintId: string, status: Complai
             isRead: false,
             timestamp: serverTimestamp(),
         });
-
-        // If status is 'Resolved', trigger an email
-        if (status === 'Resolved') {
-            const userRef = doc(db, "users", userId);
-            const userDoc = await getDoc(userRef);
-
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                const userEmail = userData.email;
-
-                if(userEmail) {
-                    await addDoc(collection(db, 'mail'), {
-                        to: [userEmail],
-                        message: {
-                            subject: `Your issue has been resolved: "${complaintData.title}"`,
-                            html: `
-                                <h1>Issue Resolved!</h1>
-                                <p>Hi ${userData.name || 'User'},</p>
-                                <p>We're happy to let you know that your reported issue, <strong>"${complaintData.title}"</strong>, has been marked as resolved.</p>
-                                <p>Thank you for helping us improve our community.</p>
-                                <br>
-                                <p>Sincerely,</p>
-                                <p>The FixIt Now Team</p>
-                            `
-                        }
-                    });
-                }
-            }
-        }
 
         revalidatePath("/");
         revalidatePath("/admin/dashboard");
